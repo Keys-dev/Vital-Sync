@@ -1,74 +1,71 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSupabase } from './useSupabase';
-import { useProfile  } from './useProfile';
+import type { VitalsRow } from '@/types';
 
-export interface PatientOption  { id: string; full_name: string; }
-export interface FamilyRequest  {
-  id: string; patient_id: string;
-  patient_name: string; status: 'pending' | 'approved' | 'rejected';
-}
+export function usePatientVitals(patientId: string) {
+  const supabase = useSupabase();
+  const [vitals, setVitals] = useState<VitalsRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<'connecting' | 'live' | 'error' | 'closed'>('connecting');
 
-export function useFamilyData() {
-  const supabase     = useSupabase();
-  const { profile }  = useProfile();
-  const [myRequests,   setMyRequests]   = useState<FamilyRequest[]>([]);
-  const [allPatients,  setAllPatients]  = useState<PatientOption[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [submitting,   setSubmitting]   = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    if (!profile) return;
+  const fetchHistory = useCallback(async () => {
+    if (!patientId) return;
     setLoading(true);
+    
+    const { data, error: fetchErr } = await supabase
+      .from('vitals_log')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('recorded_at', { ascending: false })
+      .limit(50); // Get last 50 readings
 
-    const { data: requests, error: rErr } = await supabase
-      .from('access_requests')
-      .select('id, patient_id, status')
-      .eq('family_member_id', profile.id)
-      .order('created_at', { ascending: false });
-
-    if (rErr) { setError(rErr.message); setLoading(false); return; }
-
-    const enriched: FamilyRequest[] = await Promise.all(
-      (requests ?? []).map(async (r) => {
-        const { data: p } = await supabase
-          .from('patients').select('full_name').eq('id', r.patient_id).single();
-        return {
-          id: r.id, patient_id: r.patient_id,
-          patient_name: p?.full_name ?? 'Unknown patient', status: r.status,
-        };
-      })
-    );
-    setMyRequests(enriched);
-
-    const { data: patients } = await supabase
-      .from('patients').select('id, full_name').order('full_name');
-    setAllPatients(patients ?? []);
+    if (fetchErr) {
+      setError(fetchErr.message);
+      setStatus('error');
+    } else {
+      // Reverse to chronological order for charts
+      setVitals((data || []).reverse() as VitalsRow[]);
+      setStatus('live');
+    }
     setLoading(false);
-  }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [patientId, supabase]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    fetchHistory();
 
-  const submitRequest = async (
-    patientId: string
-  ): Promise<'ok' | 'duplicate' | 'error'> => {
-    if (!profile) return 'error';
-    setSubmitting(true);
-    const { error: iErr } = await supabase.from('access_requests').insert({
-      family_member_id: profile.id,
-      patient_id:       patientId,
-      status:           'pending',
-    });
-    setSubmitting(false);
-    if (!iErr)              { await fetch(); return 'ok'; }
-    if (iErr.code === '23505') return 'duplicate';
-    return 'error';
-  };
+    if (!patientId) return;
+
+    // Subscribe to realtime inserts
+    const channel = supabase.channel(`public:vitals_log:patient_id=eq.${patientId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'vitals_log', filter: `patient_id=eq.${patientId}` },
+        (payload) => {
+          setVitals((prev) => {
+            const newVitals = [...prev, payload.new as VitalsRow];
+            // Keep maximum of 50 items in memory to prevent performance issues
+            if (newVitals.length > 50) return newVitals.slice(newVitals.length - 50);
+            return newVitals;
+          });
+        }
+      )
+      .subscribe((subscribeStatus) => {
+        if (subscribeStatus === 'SUBSCRIBED') setStatus('live');
+        if (subscribeStatus === 'CLOSED') setStatus('closed');
+        if (subscribeStatus === 'CHANNEL_ERROR') setStatus('error');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [patientId, fetchHistory, supabase]);
 
   return {
-    myRequests,
-    approvedPatients: myRequests.filter((r) => r.status === 'approved'),
-    allPatients, loading, submitting, error, submitRequest,
-    refetch: fetch,
+    vitals,
+    latest: vitals.length > 0 ? vitals[vitals.length - 1] : null,
+    loading,
+    error,
+    status
   };
 }

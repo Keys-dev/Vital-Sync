@@ -164,7 +164,7 @@ function InputIcon({ children }: { children: React.ReactNode }) {
 function DoctorLogin({ setView }: { setView: (v: View) => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const navigate = useNavigate();
 
 const handleSubmit = (e: React.FormEvent) => {
@@ -329,7 +329,7 @@ const handleSubmit = (e: React.FormEvent) => {
 function FamilyLogin({ setView }: { setView: (v: View) => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const navigate = useNavigate();
 
 const handleSubmit = (e: React.FormEvent) => {

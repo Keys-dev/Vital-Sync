@@ -45,7 +45,7 @@ export default function VitalsChart({ vitals }: { vitals: VitalsRow[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {CHARTS.map((cfg) => {
-        const latest    = data.at(-1)?.[cfg.key];
+        const latest    = data[data.length - 1]?.[cfg.key];
         const isWarning = latest != null && (
           (cfg.warnLow  != null && latest < cfg.warnLow)  ||
           (cfg.warnHigh != null && latest > cfg.warnHigh)

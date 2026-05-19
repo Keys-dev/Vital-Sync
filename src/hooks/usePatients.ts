@@ -1,18 +1,66 @@
 import { useAssignedPatients } from './useDoctorData';
+import type { Patient } from '@/types';
 
 /**
  * Adapter: keeps the existing Layout/Sidebar working with real data.
- * The existing Layout passes `isLive` — we derive it from whether
- * any patient has recent vitals.
+ * It maps the real Supabase data back to the mock Patient interface
+ * so the existing Dashboard, GPSTracker, and Alerts UI components don't break.
  */
 export function usePatients() {
-  const { patients, loading } = useAssignedPatients();
+  const { patients: assigned, loading } = useAssignedPatients();
 
-  const isLive = patients.some(
+  const isLive = assigned.some(
     (p) =>
       p.latest_vitals?.recorded_at != null &&
       Date.now() - new Date(p.latest_vitals.recorded_at).getTime() < 5 * 60 * 1000
   );
+
+  const patients: Patient[] = assigned.map((p) => {
+    const v = p.latest_vitals;
+    let status: 'stable' | 'warning' | 'critical' | 'inactive' = 'inactive';
+    
+    if (v) {
+      if (
+        (v.heart_rate != null && (v.heart_rate > 100 || v.heart_rate < 50)) ||
+        (v.spo2 != null && v.spo2 < 94) ||
+        (v.temperature != null && (v.temperature > 38.5 || v.temperature < 35))
+      ) {
+        status = 'critical';
+      } else {
+        status = 'stable';
+      }
+    }
+
+    return {
+      id: p.id,
+      name: p.full_name,
+      age: 45, // Fallback
+      gender: 'Other', // Fallback
+      ward: 'General',
+      bedNumber: `Bed ${p.id.slice(-2)}`,
+      admissionDate: new Date().toISOString(), // Fallback
+      diagnosis: 'Under observation',
+      doctorAssigned: 'Dr. Default', // Fallback
+      status,
+      location: {
+        lat: v?.latitude ?? 6.5244,
+        lng: v?.longitude ?? 3.3792,
+      },
+      deviceId: 'DEV-000', // Fallback
+      bloodType: 'O+', // Fallback
+      emergencyContact: 'None', // Fallback
+      vitals: {
+        heartRate: v?.heart_rate ?? 0,
+        spo2: v?.spo2 ?? 0,
+        temperature: v?.temperature ?? 0,
+        systolicBP: 120, // Fallback
+        diastolicBP: 80,  // Fallback
+        respiratoryRate: 16, // Fallback
+        timestamp: v?.recorded_at ?? new Date().toISOString(),
+      },
+      vitalHistory: [], // Fallback
+    };
+  });
 
   return { patients, loading, isLive };
 }
