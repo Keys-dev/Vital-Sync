@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body, #root {
+    height: 100%;
+    background-color: #f0f4f8;
+    color: #0d1f2d;
+    font-family: 'Outfit', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #e8eef4; }
+  ::-webkit-scrollbar-thumb { background: #c2d4e4; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #93b4cc; }
+
+  ::selection { background: rgba(0, 134, 168, 0.2); }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  .vital-pulse {
+    animation: vitalPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes vitalPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .scan-line {
+    position: relative;
+    overflow: hidden;
+  }
+  .scan-line::after {
+    content: '';
+    position: absolute;
+    top: -100%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0,134,168,0.25), transparent);
+    animation: scan 4s linear infinite;
+  }
+  @keyframes scan {
+    0% { top: -2px; }
+    100% { top: 100%; }
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(0, 134, 168, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 134, 168, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .critical-glow {
+    box-shadow: 0 0 0 1px rgba(255, 71, 87, 0.3), 0 0 20px rgba(255, 71, 87, 0.1);
+  }
+  .warning-glow {
+    box-shadow: 0 0 0 1px rgba(255, 184, 0, 0.3), 0 0 20px rgba(255, 184, 0, 0.08);
+  }
+}
