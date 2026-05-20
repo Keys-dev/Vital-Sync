@@ -18,11 +18,11 @@ export function usePatients() {
   const patients: Patient[] = assigned.map((p) => {
     const v = p.latest_vitals;
     let status: 'stable' | 'warning' | 'critical' | 'inactive' = 'inactive';
-    
+
     if (v) {
       if (
-        (v.heart_rate != null && (v.heart_rate > 100 || v.heart_rate < 50)) ||
-        (v.spo2 != null && v.spo2 < 94) ||
+        (v.heart_rate  != null && (v.heart_rate  > 100 || v.heart_rate  < 50)) ||
+        (v.spo2        != null &&  v.spo2        < 94)                          ||
         (v.temperature != null && (v.temperature > 38.5 || v.temperature < 35))
       ) {
         status = 'critical';
@@ -32,35 +32,45 @@ export function usePatients() {
     }
 
     return {
-      id: p.id,
-      name: p.full_name,
-      age: 45, // Fallback
-      gender: 'Other', // Fallback
-      ward: 'General',
-      bedNumber: `Bed ${p.id.slice(-2)}`,
-      admissionDate: new Date().toISOString(), // Fallback
-      diagnosis: 'Under observation',
-      doctorAssigned: 'Dr. Default', // Fallback
+      id:             p.id,
+      name:           p.full_name,
+      age:            45,                          // Fallback — not in DB schema
+      gender:         'Other',                     // Fallback
+      ward:           'General',                   // Fallback
+      bedNumber:      `Bed ${p.id.slice(-2)}`,
+      admissionDate:  new Date().toISOString(),    // Fallback
+      diagnosis:      'Under observation',         // Fallback
+      doctorAssigned: 'Dr. Default',               // Fallback
       status,
       location: {
-        lat: v?.latitude ?? 6.5244,
+        lat: v?.latitude  ?? 6.5244,
         lng: v?.longitude ?? 3.3792,
       },
-      deviceId: 'DEV-000', // Fallback
-      bloodType: 'O+', // Fallback
-      emergencyContact: 'None', // Fallback
+      deviceId:         'DEV-000', // Fallback
+      bloodType:        'O+',      // Fallback
+      emergencyContact: 'None',    // Fallback
       vitals: {
-        heartRate: v?.heart_rate ?? 0,
-        spo2: v?.spo2 ?? 0,
-        temperature: v?.temperature ?? 0,
-        systolicBP: 120, // Fallback
-        diastolicBP: 80,  // Fallback
-        respiratoryRate: 16, // Fallback
-        timestamp: v?.recorded_at ?? new Date().toISOString(),
+        heartRate:       v?.heart_rate  ?? 0,
+        spo2:            v?.spo2        ?? 0,
+        temperature:     v?.temperature ?? 0,
+        systolicBP:      120,  // Fallback — not in DB schema
+        diastolicBP:     80,   // Fallback
+        respiratoryRate: 16,   // Fallback
+        timestamp:       v?.recorded_at ?? new Date().toISOString(),
       },
-      vitalHistory: [], // Fallback
+      vitalHistory: [], // Populated by usePatientVitals when viewing a patient
     };
   });
 
-  return { patients, loading, isLive };
+  // Derived stats consumed by Dashboard.tsx
+  const stats = {
+    totalPatients:    patients.length,
+    criticalPatients: patients.filter((p) => p.status === 'critical').length,
+    warningPatients:  patients.filter((p) => p.status === 'warning').length,
+    stablePatients:   patients.filter((p) => p.status === 'stable').length,
+    // A patient is considered "online" if they have any vitals at all
+    devicesOnline:    patients.filter((p) => p.status !== 'inactive').length,
+  };
+
+  return { patients, stats, loading, isLive };
 }
