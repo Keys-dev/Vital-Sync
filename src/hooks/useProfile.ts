@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useAuthContext }      from '@/contexts/AuthContext';
-import { supabase }            from '@/lib/supabase';
+import { useEffect, useState, useRef } from 'react';
+import { useAuthContext }              from '@/contexts/AuthContext';
+import { supabase }                   from '@/lib/supabase';
 
 export type UserRole = 'doctor' | 'family';
 
@@ -23,18 +23,18 @@ export function useProfile(): UseProfileReturn {
   const { user, loading: authLoading } = useAuthContext();
 
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // stay true until we know for sure
   const [error,   setError]   = useState<string | null>(null);
+  const fetchedForId = useRef<string | null>(null);
 
-  const fetchProfile = async () => {
-    if (!user) return;
+  const fetchProfile = async (userId: string) => {
     setLoading(true);
     setError(null);
 
     const { data, error: sbError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', userId)
       .maybeSingle();
 
     if (sbError) setError(sbError.message);
@@ -44,11 +44,23 @@ export function useProfile(): UseProfileReturn {
   };
 
   useEffect(() => {
+    // Still waiting for auth to initialise — stay in loading state
     if (authLoading) return;
-    if (!user) { setProfile(null); setLoading(false); return; }
-    fetchProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // Auth resolved: no user logged in
+    if (!user) {
+      setProfile(null);
+      setLoading(false);
+      fetchedForId.current = null;
+      return;
+    }
+
+    // User is logged in — fetch profile if we haven't already for this user
+    if (fetchedForId.current !== user.id) {
+      fetchedForId.current = user.id;
+      fetchProfile(user.id);
+    }
   }, [user?.id, authLoading]);
 
-  return { profile, loading, error, refetchProfile: fetchProfile };
+  return { profile, loading, error, refetchProfile: () => fetchProfile(user!.id) };
 }
