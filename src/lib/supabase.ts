@@ -37,4 +37,21 @@ VITE_SUPABASE_ANON_KEY ${supabaseKey  ? '✅ set' : '❌ NOT SET'}
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    storageKey: 'vitalsync-auth',
+    storage: window.localStorage,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+  global: {
+    fetch: (url, options) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+      return fetch(url, { ...options, signal: controller.signal })
+        .finally(() => clearTimeout(timeout));
+    },
+  },
+});

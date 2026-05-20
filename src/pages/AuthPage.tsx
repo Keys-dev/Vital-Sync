@@ -30,12 +30,8 @@ function Logo() {
         <Activity size={18} className="text-accent-cyan" />
       </div>
       <div>
-        <h1 className="font-display text-sm font-700 text-text-primary tracking-wide leading-none">
-          VitalSync
-        </h1>
-        <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest mt-0.5">
-          Clinical Portal
-        </p>
+        <h1 className="font-display text-sm font-700 text-text-primary tracking-wide leading-none">VitalSync</h1>
+        <p className="text-[10px] text-text-muted font-mono uppercase tracking-widest mt-0.5">Clinical Portal</p>
       </div>
     </div>
   );
@@ -47,53 +43,37 @@ function Landing({ setView }: { setView: (v: View) => void }) {
       <div className="text-center mb-10">
         <Logo />
         <h2 className="font-display text-3xl font-700 text-text-primary tracking-tight leading-tight mb-2">
-          IoT Vital Signs
-          <br />
-          <span className="text-accent-cyan">Monitoring System</span>
+          IoT Vital Signs<br /><span className="text-accent-cyan">Monitoring System</span>
         </h2>
-        <p className="text-sm text-text-muted font-mono mt-3">
-          Real-time patient vitals · Anywhere · Any device
-        </p>
+        <p className="text-sm text-text-muted font-mono mt-3">Real-time patient vitals · Anywhere · Any device</p>
       </div>
 
       <div className="flex gap-4 justify-center flex-wrap">
         <button onClick={() => setView('doctor')}
           className="group flex-1 min-w-[220px] max-w-[280px] bg-bg-surface border border-border
-            rounded-2xl p-8 hover:border-accent-cyan/50 hover:shadow-glow-cyan
-            transition-all duration-200 text-center cursor-pointer">
+            rounded-2xl p-8 hover:border-accent-cyan/50 hover:shadow-glow-cyan transition-all duration-200 text-center cursor-pointer">
           <div className="w-14 h-14 rounded-2xl bg-accent-cyan/10 border border-accent-cyan/20
             flex items-center justify-center mx-auto mb-5 group-hover:bg-accent-cyan/15 transition-colors">
             <Stethoscope size={24} className="text-accent-cyan" />
           </div>
-          <p className="font-display text-base font-700 text-text-primary mb-1.5 tracking-wide">
-            I'm a Doctor
-          </p>
-          <p className="text-xs text-text-muted leading-relaxed mb-5">
-            Manage patients, monitor vitals, and configure alerts
-          </p>
+          <p className="font-display text-base font-700 text-text-primary mb-1.5 tracking-wide">I'm a Doctor</p>
+          <p className="text-xs text-text-muted leading-relaxed mb-5">Manage patients, monitor vitals, and configure alerts</p>
           <div className="flex items-center justify-center gap-1.5 text-xs font-mono font-semibold text-accent-cyan">
-            Doctor Portal
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+            Doctor Portal <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
 
         <button onClick={() => setView('family')}
           className="group flex-1 min-w-[220px] max-w-[280px] bg-bg-surface border border-border
-            rounded-2xl p-8 hover:border-accent-teal/50 hover:shadow-glow-teal
-            transition-all duration-200 text-center cursor-pointer">
+            rounded-2xl p-8 hover:border-accent-teal/50 hover:shadow-glow-teal transition-all duration-200 text-center cursor-pointer">
           <div className="w-14 h-14 rounded-2xl bg-accent-teal/10 border border-accent-teal/20
             flex items-center justify-center mx-auto mb-5 group-hover:bg-accent-teal/15 transition-colors">
             <Users size={24} className="text-accent-teal" />
           </div>
-          <p className="font-display text-base font-700 text-text-primary mb-1.5 tracking-wide">
-            I'm a Family Member
-          </p>
-          <p className="text-xs text-text-muted leading-relaxed mb-5">
-            View your loved one's vitals and receive health updates
-          </p>
+          <p className="font-display text-base font-700 text-text-primary mb-1.5 tracking-wide">I'm a Family Member</p>
+          <p className="text-xs text-text-muted leading-relaxed mb-5">View your loved one's vitals and receive health updates</p>
           <div className="flex items-center justify-center gap-1.5 text-xs font-mono font-semibold text-accent-teal">
-            Family Portal
-            <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+            Family Portal <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
       </div>
@@ -101,18 +81,14 @@ function Landing({ setView }: { setView: (v: View) => void }) {
       <div className="flex justify-center mt-8">
         <div className="inline-flex items-center gap-2 bg-bg-surface border border-border rounded-full px-4 py-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-status-stable vital-pulse" />
-          <span className="text-[11px] font-mono text-text-muted">
-            System Online · Live monitoring active
-          </span>
+          <span className="text-[11px] font-mono text-text-muted">System Online · Live monitoring active</span>
         </div>
       </div>
     </div>
   );
 }
 
-function CheckEmailScreen({
-  email, isDoctor, onBack,
-}: {
+function CheckEmailScreen({ email, isDoctor, onBack }: {
   email: string; role: 'doctor' | 'family'; isDoctor: boolean; onBack: () => void;
 }) {
   const accent   = isDoctor ? 'text-accent-cyan' : 'text-accent-teal';
@@ -158,38 +134,41 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
   const [error,     setError]     = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
 
-  // ── Sign up / sign in ──────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     if (mode === 'signup') {
+      // ── Sign up ──────────────────────────────────────────────────────────
       const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
-
       if (signUpError) { setError(signUpError.message); setLoading(false); return; }
 
       const userId = data.user?.id;
       if (!userId) { setError('Sign-up failed: no user ID returned. Please try again.'); setLoading(false); return; }
 
       const { error: profileError } = await supabase.from('profiles').insert({
-        id:        userId,
-        email:     email.toLowerCase().trim(),
-        role,
-        full_name: fullName.trim(),
+        id: userId, email: email.toLowerCase().trim(), role, full_name: fullName.trim(),
       });
-
-      if (profileError && profileError.code !== '23505') {
-        setError(profileError.message); setLoading(false); return;
-      }
+      if (profileError && profileError.code !== '23505') { setError(profileError.message); setLoading(false); return; }
 
       if (!data.session) { setMode('check_email'); setLoading(false); return; }
-
       navigate(isDoctor ? '/dashboard' : '/family', { replace: true });
 
     } else {
-      // ── Sign in ────────────────────────────────────────────────────────────
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      // ── Sign in ──────────────────────────────────────────────────────────
+      const signInPromise = supabase.auth.signInWithPassword({ email, password });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Sign in timed out. Please check your connection and try again.')), 10000)
+      );
+
+      let signInError: { message: string } | null = null;
+      try {
+        const result = await Promise.race([signInPromise, timeoutPromise]);
+        signInError = result.error;
+      } catch (err: unknown) {
+        signInError = { message: (err as Error).message };
+      }
 
       if (signInError) { setError(signInError.message); setLoading(false); return; }
 
@@ -206,13 +185,12 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
         return;
       }
 
-      // Give AuthContext and useProfile time to sync before ProtectedRoute runs
+      // Give AuthContext time to sync before ProtectedRoute runs
       await new Promise(resolve => setTimeout(resolve, 500));
       navigate(profile.role === 'doctor' ? '/dashboard' : '/family', { replace: true });
     }
   };
 
-  // ── Forgot password ────────────────────────────────────────────────────────
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) { setError('Please enter your email address first.'); return; }
@@ -258,7 +236,8 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
               </div>
               {error && <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-3 py-2"><p className="text-xs font-mono text-status-critical">{error}</p></div>}
               <button type="submit" disabled={loading}
-                className={`w-full py-2.5 rounded-xl text-sm font-semibold font-mono active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all ${isDoctor ? 'bg-accent-cyan text-white hover:bg-accent-cyan-dim' : 'bg-accent-teal text-white hover:bg-accent-teal-dim'}`}>
+                className={`w-full py-2.5 rounded-xl text-sm font-semibold font-mono active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all
+                  ${isDoctor ? 'bg-accent-cyan text-white hover:bg-accent-cyan-dim' : 'bg-accent-teal text-white hover:bg-accent-teal-dim'}`}>
                 {loading ? 'Sending…' : 'Send reset link'}
               </button>
             </form>
@@ -268,7 +247,6 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
     );
   }
 
-  // ── Main sign-in / sign-up form ────────────────────────────────────────────
   return (
     <div className="animate-fade-up max-w-[440px] mx-auto w-full">
       <button onClick={() => setView('landing')}
@@ -296,7 +274,6 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
 
       <div className="bg-bg-surface border border-border rounded-2xl p-6 space-y-4">
         <form onSubmit={handleSubmit} className="space-y-4">
-
           {mode === 'signup' && (
             <div>
               <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">Full Name</label>
