@@ -113,7 +113,6 @@ function Landing({ setView }: { setView: (v: View) => void }) {
 // ─── Check Email screen (shown when Supabase email confirmation is required) ──
 function CheckEmailScreen({
   email,
-  role,
   isDoctor,
   onBack,
 }: {
