@@ -1,7 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuthContext } from '@/contexts/AuthContext';
-import { useProfile }     from '@/hooks/useProfile';
-import type { UserRole }  from '@/hooks/useProfile';
+import { useAuthContext }    from '@/contexts/AuthContext';
+import type { UserRole }     from '@/hooks/useProfile';
 
 interface Props {
   requiredRole?: UserRole;
@@ -9,11 +8,11 @@ interface Props {
 }
 
 export default function ProtectedRoute({ requiredRole, guestOnly }: Props) {
-  const { user, loading: authLoading }       = useAuthContext();
-  const { profile, loading: profileLoading } = useProfile();
+  const { user, profile, loading } = useAuthContext();
 
-  // Wait for auth to resolve
-if (authLoading || profileLoading) {    return (
+  // Wait for auth + profile to fully resolve before making any routing decision
+  if (loading) {
+    return (
       <div className="min-h-screen bg-bg-base grid-bg flex items-center justify-center">
         <div className="flex items-center gap-3">
           <span className="w-2 h-2 rounded-full bg-accent-cyan vital-pulse" />
@@ -23,19 +22,18 @@ if (authLoading || profileLoading) {    return (
     );
   }
 
-  // Guest-only routes (auth page): if already logged in, send to dashboard
+  // Guest-only (auth page): redirect logged-in users to their dashboard
   if (guestOnly) {
     if (user && profile) {
       return <Navigate to={profile.role === 'doctor' ? '/dashboard' : '/family'} replace />;
     }
-    // Not logged in — show the guest page (AuthPage)
     return <Outlet />;
   }
 
-  // Protected routes: must be signed in
+  // Protected: must be signed in
   if (!user) return <Navigate to="/auth" replace />;
 
-  // Role-specific routes
+  // Role-specific: must have matching role
   if (requiredRole && profile?.role !== requiredRole) {
     if (profile) {
       return <Navigate to={profile.role === 'doctor' ? '/dashboard' : '/family'} replace />;
