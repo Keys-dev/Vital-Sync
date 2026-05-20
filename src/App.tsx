@@ -26,8 +26,7 @@ export default function App() {
       <Routes>
         {/* Public — redirect logged-in users away from auth page */}
         <Route element={<ProtectedRoute guestOnly />}>
-          <Route path="/auth" element={<AuthPage />} />
-        </Route>
+<Route path="/auth" element={<div style={{color:'red',fontSize:'2rem',padding:'2rem'}}>Auth page placeholder</div>} />        </Route>
 
         <Route path="/" element={<Navigate to="/auth" replace />} />
 
