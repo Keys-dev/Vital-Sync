@@ -1,4 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+<Route path="/test" element={<div style={{color:'red',fontSize:'2rem',padding:'2rem'}}>React is working</div>} />
+
 import ProtectedRoute  from '@/components/ProtectedRoutes';
 import Layout          from '@/components/Layout';
 import AuthPage        from '@/pages/AuthPage';
