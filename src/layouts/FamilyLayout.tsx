@@ -1,10 +1,10 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useClerk }   from '@clerk/clerk-react';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { Activity, Activity as MonitorIcon, LogOut } from 'lucide-react';
 
 export default function FamilyLayout() {
-  const { signOut }  = useClerk();
+  const { signOut }  = useAuthContext();
   const { profile }  = useProfile();
   const navigate     = useNavigate();
 

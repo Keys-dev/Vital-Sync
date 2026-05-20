@@ -1,32 +1,28 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Activity, Stethoscope, Users, Lock, Mail, Eye, EyeOff, ChevronRight, ArrowLeft, Shield, BadgeCheck, Wifi } from 'lucide-react';
+import { useState }     from 'react';
+import { useNavigate }  from 'react-router-dom';
+import { supabase }     from '@/lib/supabase';
+import {
+  Activity, Stethoscope, Users, Lock, Mail, Eye, EyeOff,
+  ChevronRight, ArrowLeft, Shield, BadgeCheck, User,
+} from 'lucide-react';
 
 type View = 'landing' | 'doctor' | 'family';
+type Mode = 'signin' | 'signup';
 
-// ─── Shared ECG background decoration ────────────────────────────────────────
 function EcgBackground() {
   return (
-    <svg
-      className="absolute bottom-0 left-0 w-full opacity-[0.04] pointer-events-none"
-      viewBox="0 0 1200 160"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
+    <svg className="absolute bottom-0 left-0 w-full opacity-[0.04] pointer-events-none"
+      viewBox="0 0 1200 160" preserveAspectRatio="none" aria-hidden="true">
       <polyline
         points="0,80 120,80 148,16 176,144 204,48 232,112 260,80
                 460,80 488,16 516,144 544,48 572,112 600,80
                 800,80 828,16 856,144 884,48 912,112 940,80 1200,80"
-        fill="none"
-        stroke="#0086a8"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
+        fill="none" stroke="#0086a8" strokeWidth="2.5" strokeLinejoin="round"
       />
     </svg>
   );
 }
 
-// ─── Logo / brand mark ────────────────────────────────────────────────────────
 function Logo() {
   return (
     <div className="flex items-center gap-2.5 mb-8">
@@ -45,7 +41,6 @@ function Logo() {
   );
 }
 
-// ─── Landing — role selector ──────────────────────────────────────────────────
 function Landing({ setView }: { setView: (v: View) => void }) {
   return (
     <div className="animate-fade-up">
@@ -61,19 +56,13 @@ function Landing({ setView }: { setView: (v: View) => void }) {
         </p>
       </div>
 
-      {/* Role cards */}
       <div className="flex gap-4 justify-center flex-wrap">
-        {/* Doctor card */}
-        <button
-          onClick={() => setView('doctor')}
-          className="
-            group flex-1 min-w-[220px] max-w-[280px]
-            bg-bg-surface border border-border rounded-2xl p-8
-            hover:border-accent-cyan/50 hover:shadow-glow-cyan
-            transition-all duration-200 text-center cursor-pointer
-          "
-        >
-          <div className="w-14 h-14 rounded-2xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center mx-auto mb-5 group-hover:bg-accent-cyan/15 transition-colors">
+        <button onClick={() => setView('doctor')}
+          className="group flex-1 min-w-[220px] max-w-[280px] bg-bg-surface border border-border
+            rounded-2xl p-8 hover:border-accent-cyan/50 hover:shadow-glow-cyan
+            transition-all duration-200 text-center cursor-pointer">
+          <div className="w-14 h-14 rounded-2xl bg-accent-cyan/10 border border-accent-cyan/20
+            flex items-center justify-center mx-auto mb-5 group-hover:bg-accent-cyan/15 transition-colors">
             <Stethoscope size={24} className="text-accent-cyan" />
           </div>
           <p className="font-display text-base font-700 text-text-primary mb-1.5 tracking-wide">
@@ -83,22 +72,17 @@ function Landing({ setView }: { setView: (v: View) => void }) {
             Manage patients, monitor vitals, and configure alerts
           </p>
           <div className="flex items-center justify-center gap-1.5 text-xs font-mono font-semibold text-accent-cyan">
-            Sign in as Doctor
+            Doctor Portal
             <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
         </button>
 
-        {/* Family card */}
-        <button
-          onClick={() => setView('family')}
-          className="
-            group flex-1 min-w-[220px] max-w-[280px]
-            bg-bg-surface border border-border rounded-2xl p-8
-            hover:border-accent-teal/50 hover:shadow-glow-teal
-            transition-all duration-200 text-center cursor-pointer
-          "
-        >
-          <div className="w-14 h-14 rounded-2xl bg-accent-teal/10 border border-accent-teal/20 flex items-center justify-center mx-auto mb-5 group-hover:bg-accent-teal/15 transition-colors">
+        <button onClick={() => setView('family')}
+          className="group flex-1 min-w-[220px] max-w-[280px] bg-bg-surface border border-border
+            rounded-2xl p-8 hover:border-accent-teal/50 hover:shadow-glow-teal
+            transition-all duration-200 text-center cursor-pointer">
+          <div className="w-14 h-14 rounded-2xl bg-accent-teal/10 border border-accent-teal/20
+            flex items-center justify-center mx-auto mb-5 group-hover:bg-accent-teal/15 transition-colors">
             <Users size={24} className="text-accent-teal" />
           </div>
           <p className="font-display text-base font-700 text-text-primary mb-1.5 tracking-wide">
@@ -114,7 +98,6 @@ function Landing({ setView }: { setView: (v: View) => void }) {
         </button>
       </div>
 
-      {/* Live status badge */}
       <div className="flex justify-center mt-8">
         <div className="inline-flex items-center gap-2 bg-bg-surface border border-border rounded-full px-4 py-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-status-stable vital-pulse" />
@@ -127,59 +110,113 @@ function Landing({ setView }: { setView: (v: View) => void }) {
   );
 }
 
-// ─── Shared form field ────────────────────────────────────────────────────────
-function Field({
-  label,
-  hint,
-  accentClass,
-  children,
+// ─── Shared auth form (Doctor + Family) ──────────────────────────────────────
+function AuthForm({
+  role,
+  setView,
 }: {
-  label: string;
-  hint?: string;
-  accentClass: string;
-  children: React.ReactNode;
+  role: 'doctor' | 'family';
+  setView: (v: View) => void;
 }) {
-  return (
-    <div>
-      <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">
-        {label}
-      </label>
-      <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentClass}`}>
-        {children}
-      </div>
-      {hint && <p className="text-[11px] text-text-muted font-mono mt-1">{hint}</p>}
-    </div>
-  );
-}
+  const navigate           = useNavigate();
+  const isDoctor           = role === 'doctor';
+  const accentRing         = isDoctor
+    ? 'focus-within:ring-accent-cyan/30 focus-within:border-accent-cyan/60'
+    : 'focus-within:ring-accent-teal/30 focus-within:border-accent-teal/60';
 
-function InputIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
-      {children}
-    </span>
-  );
-}
-
-// ─── Doctor login ─────────────────────────────────────────────────────────────
-function DoctorLogin({ setView }: { setView: (v: View) => void }) {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode,     setMode]     = useState<Mode>('signin');
+  const [fullName, setFullName] = useState('');
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [loading] = useState(false);
-  const navigate = useNavigate();
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
 
-const handleSubmit = (e: React.FormEvent) => {
-  e.preventDefault();
-  navigate('/sign-in');
-};
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-  const accentRing = 'focus-within:ring-accent-cyan/30 focus-within:border-accent-cyan/60';
+    if (mode === 'signup') {
+      // 1. Create the Supabase auth user
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
+
+      const userId = data.user?.id;
+      if (!userId) {
+        setError('Sign-up succeeded but no user ID was returned. Please try signing in.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Insert the profile row with role + name
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id:        userId,
+        email:     email.toLowerCase().trim(),
+        role,
+        full_name: fullName.trim(),
+      });
+
+      if (profileError) {
+        // Profile already exists — just sign in instead
+        if (profileError.code !== '23505') {
+          setError(profileError.message);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 3. Redirect
+      navigate(isDoctor ? '/dashboard' : '/family', { replace: true });
+
+    } else {
+      // Sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch profile to determine role and redirect correctly
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setError('Could not retrieve user after sign-in.'); setLoading(false); return; }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        // Signed in but no profile — shouldn't normally happen
+        setError('No account found for this email in the ' + role + ' portal.');
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
+      }
+
+      navigate(profile.role === 'doctor' ? '/dashboard' : '/family', { replace: true });
+    }
+  };
 
   return (
     <div className="animate-fade-up max-w-[440px] mx-auto w-full">
-      <button
-        onClick={() => setView('landing')}
-        className="flex items-center gap-1.5 text-xs font-mono text-text-muted hover:text-text-secondary transition-colors mb-6"
-      >
+      <button onClick={() => setView('landing')}
+        className="flex items-center gap-1.5 text-xs font-mono text-text-muted
+          hover:text-text-secondary transition-colors mb-6">
         <ArrowLeft size={13} />
         Back to role selection
       </button>
@@ -187,307 +224,149 @@ const handleSubmit = (e: React.FormEvent) => {
       <Logo />
 
       {/* Role badge */}
-      <div className="inline-flex items-center gap-1.5 bg-accent-cyan/10 border border-accent-cyan/25 rounded-full px-3 py-1 mb-5">
-        <BadgeCheck size={12} className="text-accent-cyan" />
-        <span className="text-[11px] font-mono font-semibold text-accent-cyan">Doctor Portal</span>
+      <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-5
+        ${isDoctor
+          ? 'bg-accent-cyan/10 border border-accent-cyan/25'
+          : 'bg-accent-teal/10 border border-accent-teal/25'}`}>
+        {isDoctor
+          ? <BadgeCheck size={12} className="text-accent-cyan" />
+          : <Users      size={12} className="text-accent-teal" />}
+        <span className={`text-[11px] font-mono font-semibold
+          ${isDoctor ? 'text-accent-cyan' : 'text-accent-teal'}`}>
+          {isDoctor ? 'Doctor Portal' : 'Family Portal'}
+        </span>
       </div>
 
       <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-1">
-        {mode === 'signin' ? 'Welcome back, Doctor' : 'Create Doctor Account'}
+        {mode === 'signin'
+          ? (isDoctor ? 'Welcome back, Doctor' : 'Stay connected')
+          : 'Create your account'}
       </h2>
       <p className="text-sm text-text-muted mb-6">
-        {mode === 'signin' ? 'Sign in to access your patient dashboard' : 'Register to manage your patients'}
+        {mode === 'signin'
+          ? (isDoctor ? 'Sign in to access your patient dashboard' : "Monitor your loved one's health in real time")
+          : 'Fill in your details to get started'}
       </p>
 
-      {/* Form card */}
       <div className="bg-bg-surface border border-border rounded-2xl p-6 space-y-4">
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Full name — sign-up only */}
           {mode === 'signup' && (
-            <Field label="Full Name" accentClass={accentRing}>
-              <InputIcon><Users size={14} /></InputIcon>
-              <input
-                type="text"
-                placeholder="e.g. Dr. Jane Doe"
-                required
-                className="
-                  w-full bg-bg-elevated border border-border rounded-xl
-                  pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
-                  placeholder:text-text-muted outline-none
-                  transition-colors
-                "
-              />
-            </Field>
-          )}
-
-          <Field label="Hospital ID" accentClass={accentRing}>
-            <InputIcon><Lock size={14} /></InputIcon>
-            <input
-              type="text"
-              placeholder="e.g. DR-2024-0042"
-              required
-              className="
-                w-full bg-bg-elevated border border-border rounded-xl
-                pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
-                placeholder:text-text-muted outline-none
-                transition-colors
-              "
-            />
-          </Field>
-
-          <Field label="Email Address" accentClass={accentRing}>
-            <InputIcon><Mail size={14} /></InputIcon>
-            <input
-              type="email"
-              placeholder="doctor@hospital.com"
-              required
-              className="
-                w-full bg-bg-elevated border border-border rounded-xl
-                pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
-                placeholder:text-text-muted outline-none
-                transition-colors
-              "
-            />
-          </Field>
-
-          <Field label="Password" accentClass={accentRing}>
-            <InputIcon><Lock size={14} /></InputIcon>
-            <input
-              type={showPass ? 'text' : 'password'}
-              placeholder={mode === 'signin' ? 'Enter your password' : 'Create a strong password'}
-              required
-              className="
-                w-full bg-bg-elevated border border-border rounded-xl
-                pl-9 pr-10 py-2.5 text-sm text-text-primary font-mono
-                placeholder:text-text-muted outline-none
-                transition-colors
-              "
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass(s => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
-            >
-              {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </Field>
-
-          {mode === 'signin' && (
-            <div className="flex justify-end">
-              <a href="#" className="text-[11px] font-mono text-text-muted hover:text-accent-cyan transition-colors">
-                Forgot password?
-              </a>
+            <div>
+              <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">
+                Full Name
+              </label>
+              <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+                  <User size={14} />
+                </span>
+                <input type="text" required minLength={2}
+                  value={fullName} onChange={(e) => setFullName(e.target.value)}
+                  placeholder={isDoctor ? 'Dr. Amaka Okonkwo' : 'Your full name'}
+                  className="w-full bg-bg-elevated border border-border rounded-xl
+                    pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
+                    placeholder:text-text-muted outline-none transition-colors"
+                />
+              </div>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="
-              w-full py-2.5 rounded-xl text-sm font-semibold font-mono
-              bg-accent-cyan text-white
-              hover:bg-accent-cyan-dim active:scale-[0.98]
-              disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all duration-150
-            "
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Wifi size={14} className="animate-pulse" /> {mode === 'signin' ? 'Signing in…' : 'Creating account…'}
+          {/* Email */}
+          <div>
+            <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">
+              Email Address
+            </label>
+            <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+                <Mail size={14} />
               </span>
-            ) : (
-              mode === 'signin' ? 'Sign in to Dashboard' : 'Create Account'
+              <input type="email" required
+                value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder={isDoctor ? 'doctor@hospital.com' : 'yourname@email.com'}
+                className="w-full bg-bg-elevated border border-border rounded-xl
+                  pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
+                  placeholder:text-text-muted outline-none transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Password */}
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest">
+                Password
+              </label>
+              {mode === 'signin' && (
+                <a href="#" className={`text-[11px] font-mono
+                  ${isDoctor ? 'text-text-muted hover:text-accent-cyan' : 'text-text-muted hover:text-accent-teal'}
+                  transition-colors`}>
+                  Forgot password?
+                </a>
+              )}
+            </div>
+            <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+                <Lock size={14} />
+              </span>
+              <input type={showPass ? 'text' : 'password'} required minLength={6}
+                value={password} onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full bg-bg-elevated border border-border rounded-xl
+                  pl-9 pr-10 py-2.5 text-sm text-text-primary font-mono
+                  placeholder:text-text-muted outline-none transition-colors"
+              />
+              <button type="button" onClick={() => setShowPass((s) => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted
+                  hover:text-text-secondary transition-colors">
+                {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+            {mode === 'signup' && (
+              <p className="text-[10px] font-mono text-text-muted mt-1">Minimum 6 characters</p>
             )}
+          </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-3 py-2">
+              <p className="text-xs font-mono text-status-critical">{error}</p>
+            </div>
+          )}
+
+          {/* Submit */}
+          <button type="submit" disabled={loading}
+            className={`w-full py-2.5 rounded-xl text-sm font-semibold font-mono
+              active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
+              transition-all duration-150
+              ${isDoctor
+                ? `bg-accent-cyan text-white hover:bg-accent-cyan-dim`
+                : `bg-accent-teal text-white hover:bg-accent-teal-dim`}`}>
+            {loading
+              ? 'Please wait…'
+              : mode === 'signin'
+                ? (isDoctor ? 'Sign in to Dashboard' : 'View Patient Vitals')
+                : 'Create Account'}
           </button>
         </form>
 
-        {/* Divider */}
-        <div className="flex items-center gap-3 mt-2">
+        {/* Toggle sign-in / sign-up */}
+        <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-border" />
           <span className="text-[11px] font-mono text-text-muted">
-            {mode === 'signin' ? 'New to the portal?' : 'Already registered?'}
+            {mode === 'signin' ? 'New here?' : 'Already have an account?'}
           </span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-          className="block w-full text-center text-xs font-mono font-semibold text-accent-cyan hover:text-accent-cyan-dim transition-colors"
-        >
-          {mode === 'signin' ? 'Create a doctor account →' : '← Back to sign in'}
+        <button type="button"
+          onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
+          className={`block w-full text-center text-xs font-mono font-semibold transition-colors
+            ${isDoctor ? 'text-accent-cyan hover:text-accent-cyan-dim' : 'text-accent-teal hover:text-accent-teal-dim'}`}>
+          {mode === 'signin' ? 'Create a new account →' : '← Sign in instead'}
         </button>
       </div>
 
-      <p className="text-center text-[11px] font-mono text-text-muted mt-4">
-        Access restricted to registered medical personnel only
-      </p>
-    </div>
-  );
-}
-
-// ─── Family login ─────────────────────────────────────────────────────────────
-function FamilyLogin({ setView }: { setView: (v: View) => void }) {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [showPass, setShowPass] = useState(false);
-  const [loading] = useState(false);
-  const navigate = useNavigate();
-
-const handleSubmit = (e: React.FormEvent) => {
-  e.preventDefault();
-  navigate('/sign-in');
-};
-
-  const accentRing = 'focus-within:ring-accent-teal/30 focus-within:border-accent-teal/60';
-
-  return (
-    <div className="animate-fade-up max-w-[440px] mx-auto w-full">
-      <button
-        onClick={() => setView('landing')}
-        className="flex items-center gap-1.5 text-xs font-mono text-text-muted hover:text-text-secondary transition-colors mb-6"
-      >
-        <ArrowLeft size={13} />
-        Back to role selection
-      </button>
-
-      <Logo />
-
-      {/* Role badge */}
-      <div className="inline-flex items-center gap-1.5 bg-accent-teal/10 border border-accent-teal/25 rounded-full px-3 py-1 mb-5">
-        <Users size={12} className="text-accent-teal" />
-        <span className="text-[11px] font-mono font-semibold text-accent-teal">Family Portal</span>
-      </div>
-
-      <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-1">
-        {mode === 'signin' ? 'Stay connected' : 'Register for access'}
-      </h2>
-      <p className="text-sm text-text-muted mb-6">
-        {mode === 'signin' ? "Monitor your loved one's health in real time" : 'Create an account to view patient vitals'}
-      </p>
-
-      {/* Form card */}
-      <div className="bg-bg-surface border border-border rounded-2xl p-6 space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'signup' && (
-            <Field label="Full Name" accentClass={accentRing}>
-              <InputIcon><Users size={14} /></InputIcon>
-              <input
-                type="text"
-                placeholder="e.g. Jane Doe"
-                required
-                className="
-                  w-full bg-bg-elevated border border-border rounded-xl
-                  pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
-                  placeholder:text-text-muted outline-none
-                  transition-colors
-                "
-              />
-            </Field>
-          )}
-
-          <Field
-            label="Patient Access Code"
-            hint="Provided by the hospital at admission"
-            accentClass={accentRing}
-          >
-            <InputIcon><BadgeCheck size={14} /></InputIcon>
-            <input
-              type="text"
-              placeholder="e.g. PAT-2024-0088"
-              required
-              className="
-                w-full bg-bg-elevated border border-border rounded-xl
-                pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono uppercase
-                placeholder:text-text-muted placeholder:normal-case outline-none
-                transition-colors
-              "
-            />
-          </Field>
-
-          <Field label="Your Email" accentClass={accentRing}>
-            <InputIcon><Mail size={14} /></InputIcon>
-            <input
-              type="email"
-              placeholder="yourname@email.com"
-              required
-              className="
-                w-full bg-bg-elevated border border-border rounded-xl
-                pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
-                placeholder:text-text-muted outline-none
-                transition-colors
-              "
-            />
-          </Field>
-
-          <Field label="Password" accentClass={accentRing}>
-            <InputIcon><Lock size={14} /></InputIcon>
-            <input
-              type={showPass ? 'text' : 'password'}
-              placeholder={mode === 'signin' ? 'Enter your password' : 'Create a strong password'}
-              required
-              className="
-                w-full bg-bg-elevated border border-border rounded-xl
-                pl-9 pr-10 py-2.5 text-sm text-text-primary font-mono
-                placeholder:text-text-muted outline-none
-                transition-colors
-              "
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass(s => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
-            >
-              {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </Field>
-
-          {mode === 'signin' && (
-            <div className="flex justify-end">
-              <a href="#" className="text-[11px] font-mono text-text-muted hover:text-accent-teal transition-colors">
-                Forgot password?
-              </a>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="
-              w-full py-2.5 rounded-xl text-sm font-semibold font-mono
-              bg-accent-teal text-white
-              hover:bg-accent-teal-dim active:scale-[0.98]
-              disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all duration-150
-            "
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Wifi size={14} className="animate-pulse" /> {mode === 'signin' ? 'Signing in…' : 'Registering…'}
-              </span>
-            ) : (
-              mode === 'signin' ? 'View Patient Vitals' : 'Create Account'
-            )}
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 mt-2">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-[11px] font-mono text-text-muted">
-            {mode === 'signin' ? 'New to the portal?' : 'Already have an account?'}
-          </span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-          className="block w-full text-center text-xs font-mono font-semibold text-accent-teal hover:text-accent-teal-dim transition-colors"
-        >
-          {mode === 'signin' ? 'Request family access from your doctor →' : '← Back to sign in'}
-        </button>
-      </div>
-
-      {/* Security note */}
       <div className="flex items-center justify-center gap-1.5 mt-4">
         <Shield size={12} className="text-text-muted" />
         <span className="text-[11px] font-mono text-text-muted">
@@ -498,28 +377,21 @@ const handleSubmit = (e: React.FormEvent) => {
   );
 }
 
-// ─── Root component ───────────────────────────────────────────────────────────
 export default function AuthPage() {
   const [view, setView] = useState<View>('landing');
 
   return (
     <div className="min-h-screen bg-bg-base grid-bg flex items-center justify-center px-4 py-10 relative overflow-hidden">
       <EcgBackground />
-      {/* Top-right glow */}
-      <div
-        className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(0,134,168,0.07) 0%, transparent 65%)' }}
-      />
-      {/* Bottom-left glow */}
-      <div
-        className="absolute -bottom-40 -left-40 w-[460px] h-[460px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(0,145,107,0.06) 0%, transparent 65%)' }}
-      />
+      <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(0,134,168,0.07) 0%, transparent 65%)' }} />
+      <div className="absolute -bottom-40 -left-40 w-[460px] h-[460px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(0,145,107,0.06) 0%, transparent 65%)' }} />
 
       <div className="relative z-10 w-full max-w-[680px]">
         {view === 'landing' && <Landing setView={setView} />}
-        {view === 'doctor'  && <DoctorLogin setView={setView} />}
-        {view === 'family'  && <FamilyLogin setView={setView} />}
+        {view === 'doctor'  && <AuthForm role="doctor" setView={setView} />}
+        {view === 'family'  && <AuthForm role="family" setView={setView} />}
       </div>
     </div>
   );

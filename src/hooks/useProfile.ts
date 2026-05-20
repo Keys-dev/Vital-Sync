@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useUser } from '@clerk/clerk-react';
-import { useSupabase } from './useSupabase';
+import { useAuthContext }      from '@/contexts/AuthContext';
+import { supabase }            from '@/lib/supabase';
 
 export type UserRole = 'doctor' | 'family';
 
@@ -20,8 +20,7 @@ interface UseProfileReturn {
 }
 
 export function useProfile(): UseProfileReturn {
-  const { user, isLoaded } = useUser();
-  const supabase            = useSupabase();
+  const { user, loading: authLoading } = useAuthContext();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,11 +44,11 @@ export function useProfile(): UseProfileReturn {
   };
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (authLoading) return;
     if (!user) { setProfile(null); setLoading(false); return; }
     fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isLoaded]);
+  }, [user?.id, authLoading]);
 
   return { profile, loading, error, refetchProfile: fetchProfile };
 }
