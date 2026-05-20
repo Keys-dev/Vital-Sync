@@ -3,11 +3,11 @@ import { useNavigate }  from 'react-router-dom';
 import { supabase }     from '@/lib/supabase';
 import {
   Activity, Stethoscope, Users, Lock, Mail, Eye, EyeOff,
-  ChevronRight, ArrowLeft, Shield, BadgeCheck, User,
+  ChevronRight, ArrowLeft, Shield, BadgeCheck, User, MailCheck,
 } from 'lucide-react';
 
 type View = 'landing' | 'doctor' | 'family';
-type Mode = 'signin' | 'signup';
+type Mode = 'signin' | 'signup' | 'forgot' | 'check_email';
 
 function EcgBackground() {
   return (
@@ -110,6 +110,67 @@ function Landing({ setView }: { setView: (v: View) => void }) {
   );
 }
 
+// ─── Check Email screen (shown when Supabase email confirmation is required) ──
+function CheckEmailScreen({
+  email,
+  role,
+  isDoctor,
+  onBack,
+}: {
+  email: string;
+  role: 'doctor' | 'family';
+  isDoctor: boolean;
+  onBack: () => void;
+}) {
+  const accent = isDoctor ? 'text-accent-cyan' : 'text-accent-teal';
+  const accentBg = isDoctor
+    ? 'bg-accent-cyan/10 border-accent-cyan/25'
+    : 'bg-accent-teal/10 border-accent-teal/25';
+
+  return (
+    <div className="animate-fade-up max-w-[440px] mx-auto w-full text-center">
+      <Logo />
+      <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border ${accentBg} mb-6 mx-auto`}>
+        <MailCheck size={28} className={accent} />
+      </div>
+      <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-2">
+        Check your email
+      </h2>
+      <p className="text-sm text-text-muted mb-2">
+        We sent a confirmation link to
+      </p>
+      <p className={`text-sm font-mono font-semibold ${accent} mb-6`}>{email}</p>
+      <div className="bg-bg-surface border border-border rounded-2xl p-5 text-left space-y-3 mb-6">
+        <p className="text-xs text-text-muted">
+          1. Open the email from <span className="text-text-secondary font-mono">noreply@mail.app.supabase.io</span>
+        </p>
+        <p className="text-xs text-text-muted">
+          2. Click the <span className="text-text-secondary font-semibold">"Confirm your email"</span> link
+        </p>
+        <p className="text-xs text-text-muted">
+          3. You'll be redirected back to sign in automatically
+        </p>
+      </div>
+      <p className="text-xs text-text-muted mb-4">
+        Didn't receive it? Check your spam folder, or{' '}
+        <button
+          onClick={onBack}
+          className={`underline ${accent} hover:opacity-80 transition-opacity`}
+        >
+          go back and try again
+        </button>.
+      </p>
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-xs font-mono text-text-muted hover:text-text-secondary transition-colors mx-auto"
+      >
+        <ArrowLeft size={13} />
+        Back to sign in
+      </button>
+    </div>
+  );
+}
+
 // ─── Shared auth form (Doctor + Family) ──────────────────────────────────────
 function AuthForm({
   role,
@@ -131,18 +192,16 @@ function AuthForm({
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
 
+  // ── Sign up / sign in ──────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     if (mode === 'signup') {
-      // 1. Create the Supabase auth user
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
 
       if (signUpError) {
         setError(signUpError.message);
@@ -152,12 +211,13 @@ function AuthForm({
 
       const userId = data.user?.id;
       if (!userId) {
-        setError('Sign-up succeeded but no user ID was returned. Please try signing in.');
+        setError('Sign-up failed: no user ID returned. Please try again.');
         setLoading(false);
         return;
       }
 
-      // 2. Insert the profile row with role + name
+      // Insert profile (works regardless of email confirmation status
+      // because the user row already exists in auth.users)
       const { error: profileError } = await supabase.from('profiles').insert({
         id:        userId,
         email:     email.toLowerCase().trim(),
@@ -165,24 +225,27 @@ function AuthForm({
         full_name: fullName.trim(),
       });
 
-      if (profileError) {
-        // Profile already exists — just sign in instead
-        if (profileError.code !== '23505') {
-          setError(profileError.message);
-          setLoading(false);
-          return;
-        }
+      if (profileError && profileError.code !== '23505') {
+        // 23505 = unique violation (profile already exists) — harmless
+        setError(profileError.message);
+        setLoading(false);
+        return;
       }
 
-      // 3. Redirect
+      // If Supabase email confirmation is enabled, data.session will be null.
+      // Show the "check your email" screen instead of navigating to the dashboard.
+      if (!data.session) {
+        setMode('check_email');
+        setLoading(false);
+        return;
+      }
+
+      // Email confirmation disabled (dev mode) — session exists, go straight in.
       navigate(isDoctor ? '/dashboard' : '/family', { replace: true });
 
     } else {
       // Sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
       if (signInError) {
         setError(signInError.message);
@@ -190,7 +253,6 @@ function AuthForm({
         return;
       }
 
-      // Fetch profile to determine role and redirect correctly
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setError('Could not retrieve user after sign-in.'); setLoading(false); return; }
 
@@ -201,8 +263,7 @@ function AuthForm({
         .maybeSingle();
 
       if (!profile) {
-        // Signed in but no profile — shouldn't normally happen
-        setError('No account found for this email in the ' + role + ' portal.');
+        setError('No account found for this email. Please sign up first.');
         await supabase.auth.signOut();
         setLoading(false);
         return;
@@ -212,6 +273,95 @@ function AuthForm({
     }
   };
 
+  // ── Forgot password ────────────────────────────────────────────────────────
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) { setError('Please enter your email address first.'); return; }
+    setLoading(true);
+    setError(null);
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth`,
+    });
+
+    setLoading(false);
+    if (resetError) { setError(resetError.message); return; }
+    setResetSent(true);
+  };
+
+  // ── "Check email" state (post-signup, email confirmation required) ─────────
+  if (mode === 'check_email') {
+    return (
+      <CheckEmailScreen
+        email={email}
+        role={role}
+        isDoctor={isDoctor}
+        onBack={() => { setMode('signin'); setError(null); }}
+      />
+    );
+  }
+
+  // ── Forgot password form ───────────────────────────────────────────────────
+  if (mode === 'forgot') {
+    return (
+      <div className="animate-fade-up max-w-[440px] mx-auto w-full">
+        <button onClick={() => { setMode('signin'); setError(null); setResetSent(false); }}
+          className="flex items-center gap-1.5 text-xs font-mono text-text-muted hover:text-text-secondary transition-colors mb-6">
+          <ArrowLeft size={13} />
+          Back to sign in
+        </button>
+        <Logo />
+        <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-1">
+          Reset your password
+        </h2>
+        <p className="text-sm text-text-muted mb-6">
+          Enter your email and we'll send you a reset link.
+        </p>
+        <div className="bg-bg-surface border border-border rounded-2xl p-6 space-y-4">
+          {resetSent ? (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <MailCheck size={32} className={isDoctor ? 'text-accent-cyan' : 'text-accent-teal'} />
+              <p className="text-sm font-semibold text-text-primary">Reset link sent!</p>
+              <p className="text-xs text-text-muted">Check <span className="font-mono text-text-secondary">{email}</span> for the password reset link.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">
+                  Email Address
+                </label>
+                <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+                    <Mail size={14} />
+                  </span>
+                  <input type="email" required
+                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full bg-bg-elevated border border-border rounded-xl
+                      pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
+                      placeholder:text-text-muted outline-none transition-colors"
+                  />
+                </div>
+              </div>
+              {error && (
+                <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-3 py-2">
+                  <p className="text-xs font-mono text-status-critical">{error}</p>
+                </div>
+              )}
+              <button type="submit" disabled={loading}
+                className={`w-full py-2.5 rounded-xl text-sm font-semibold font-mono
+                  active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all
+                  ${isDoctor ? 'bg-accent-cyan text-white hover:bg-accent-cyan-dim' : 'bg-accent-teal text-white hover:bg-accent-teal-dim'}`}>
+                {loading ? 'Sending…' : 'Send reset link'}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main sign-in / sign-up form ────────────────────────────────────────────
   return (
     <div className="animate-fade-up max-w-[440px] mx-auto w-full">
       <button onClick={() => setView('landing')}
@@ -298,11 +448,14 @@ function AuthForm({
                 Password
               </label>
               {mode === 'signin' && (
-                <a href="#" className={`text-[11px] font-mono
-                  ${isDoctor ? 'text-text-muted hover:text-accent-cyan' : 'text-text-muted hover:text-accent-teal'}
-                  transition-colors`}>
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot'); setError(null); }}
+                  className={`text-[11px] font-mono
+                    ${isDoctor ? 'text-text-muted hover:text-accent-cyan' : 'text-text-muted hover:text-accent-teal'}
+                    transition-colors`}>
                   Forgot password?
-                </a>
+                </button>
               )}
             </div>
             <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
