@@ -1,5 +1,6 @@
-import { useState }  from 'react';
-import { supabase }  from '@/lib/supabase';
+import { useState }     from 'react';
+import { useNavigate }  from 'react-router-dom';
+import { supabase }     from '@/lib/supabase';
 import {
   Activity, Stethoscope, Users, Lock, Mail, Eye, EyeOff,
   ChevronRight, ArrowLeft, Shield, BadgeCheck, User, MailCheck,
@@ -46,7 +47,8 @@ function Landing({ setView }: { setView: (v: View) => void }) {
       <div className="text-center mb-10">
         <Logo />
         <h2 className="font-display text-3xl font-700 text-text-primary tracking-tight leading-tight mb-2">
-          IoT Vital Signs<br />
+          IoT Vital Signs
+          <br />
           <span className="text-accent-cyan">Monitoring System</span>
         </h2>
         <p className="text-sm text-text-muted font-mono mt-3">
@@ -113,40 +115,27 @@ function CheckEmailScreen({
 }: {
   email: string; role: 'doctor' | 'family'; isDoctor: boolean; onBack: () => void;
 }) {
-  const accent   = isDoctor ? 'text-accent-cyan'                         : 'text-accent-teal';
-  const accentBg = isDoctor ? 'bg-accent-cyan/10 border-accent-cyan/25'  : 'bg-accent-teal/10 border-accent-teal/25';
+  const accent   = isDoctor ? 'text-accent-cyan' : 'text-accent-teal';
+  const accentBg = isDoctor ? 'bg-accent-cyan/10 border-accent-cyan/25' : 'bg-accent-teal/10 border-accent-teal/25';
   return (
     <div className="animate-fade-up max-w-[440px] mx-auto w-full text-center">
       <Logo />
       <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border ${accentBg} mb-6 mx-auto`}>
         <MailCheck size={28} className={accent} />
       </div>
-      <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-2">
-        Check your email
-      </h2>
+      <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-2">Check your email</h2>
       <p className="text-sm text-text-muted mb-2">We sent a confirmation link to</p>
       <p className={`text-sm font-mono font-semibold ${accent} mb-6`}>{email}</p>
       <div className="bg-bg-surface border border-border rounded-2xl p-5 text-left space-y-3 mb-6">
-        <p className="text-xs text-text-muted">
-          1. Open the email from{' '}
-          <span className="text-text-secondary font-mono">noreply@mail.app.supabase.io</span>
-        </p>
-        <p className="text-xs text-text-muted">
-          2. Click the <span className="text-text-secondary font-semibold">"Confirm your email"</span> link
-        </p>
-        <p className="text-xs text-text-muted">
-          3. You'll be redirected back to sign in automatically
-        </p>
+        <p className="text-xs text-text-muted">1. Open the email from <span className="text-text-secondary font-mono">noreply@mail.app.supabase.io</span></p>
+        <p className="text-xs text-text-muted">2. Click the <span className="text-text-secondary font-semibold">"Confirm your email"</span> link</p>
+        <p className="text-xs text-text-muted">3. You'll be redirected back to sign in automatically</p>
       </div>
       <p className="text-xs text-text-muted mb-4">
         Didn't receive it? Check your spam folder, or{' '}
-        <button onClick={onBack} className={`underline ${accent} hover:opacity-80 transition-opacity`}>
-          go back and try again
-        </button>.
+        <button onClick={onBack} className={`underline ${accent} hover:opacity-80 transition-opacity`}>go back and try again</button>.
       </p>
-      <button onClick={onBack}
-        className="flex items-center gap-1.5 text-xs font-mono text-text-muted
-          hover:text-text-secondary transition-colors mx-auto">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-xs font-mono text-text-muted hover:text-text-secondary transition-colors mx-auto">
         <ArrowLeft size={13} /> Back to sign in
       </button>
     </div>
@@ -154,6 +143,7 @@ function CheckEmailScreen({
 }
 
 function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: View) => void }) {
+  const navigate   = useNavigate();
   const isDoctor   = role === 'doctor';
   const accentRing = isDoctor
     ? 'focus-within:ring-accent-cyan/30 focus-within:border-accent-cyan/60'
@@ -168,6 +158,7 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
   const [error,     setError]     = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
 
+  // ── Sign up / sign in ──────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -179,17 +170,8 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
       if (signUpError) { setError(signUpError.message); setLoading(false); return; }
 
       const userId = data.user?.id;
-      if (!userId) {
-        setError('Sign-up failed: no user ID returned. Please try again.');
-        setLoading(false);
-        return;
-      }
+      if (!userId) { setError('Sign-up failed: no user ID returned. Please try again.'); setLoading(false); return; }
 
-      // Email confirmation required — show check-email screen.
-      // Profile insert happens after they confirm and sign in.
-      if (!data.session) { setMode('check_email'); setLoading(false); return; }
-
-      // Session is live (no email confirmation). Insert the profile now.
       const { error: profileError } = await supabase.from('profiles').insert({
         id:        userId,
         email:     email.toLowerCase().trim(),
@@ -198,35 +180,43 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
       });
 
       if (profileError && profileError.code !== '23505') {
-        setError(profileError.message);
+        setError(profileError.message); setLoading(false); return;
+      }
+
+      if (!data.session) { setMode('check_email'); setLoading(false); return; }
+
+      navigate(isDoctor ? '/dashboard' : '/family', { replace: true });
+
+    } else {
+      // ── Sign in ────────────────────────────────────────────────────────────
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (signInError) { setError(signInError.message); setLoading(false); return; }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setError('Could not retrieve user after sign-in.'); setLoading(false); return; }
+
+      const { data: profile } = await supabase
+        .from('profiles').select('role').eq('id', user.id).maybeSingle();
+
+      if (!profile) {
+        setError('No account found for this email. Please sign up first.');
+        await supabase.auth.signOut();
         setLoading(false);
         return;
       }
 
-      // Leave loading=true. Do NOT call navigate().
-      // onAuthStateChange fires → AuthContext.user is set → useProfile fetches
-      // the new profile → guestOnly ProtectedRoute redirects automatically.
-
-    } else {
-      // Sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) { setError(signInError.message); setLoading(false); return; }
-
-      // Leave loading=true. Do NOT call navigate().
-      // onAuthStateChange fires → AuthContext.user is set → useProfile fetches
-      // the profile → guestOnly ProtectedRoute redirects to the right dashboard.
+      // Give AuthContext and useProfile time to sync before ProtectedRoute runs
+      await new Promise(resolve => setTimeout(resolve, 500));
+      navigate(profile.role === 'doctor' ? '/dashboard' : '/family', { replace: true });
     }
   };
 
+  // ── Forgot password ────────────────────────────────────────────────────────
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) { setError('Please enter your email address first.'); return; }
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth`,
     });
@@ -236,70 +226,39 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
   };
 
   if (mode === 'check_email') {
-    return (
-      <CheckEmailScreen
-        email={email}
-        role={role}
-        isDoctor={isDoctor}
-        onBack={() => { setMode('signin'); setError(null); }}
-      />
-    );
+    return <CheckEmailScreen email={email} role={role} isDoctor={isDoctor} onBack={() => { setMode('signin'); setError(null); }} />;
   }
 
   if (mode === 'forgot') {
     return (
       <div className="animate-fade-up max-w-[440px] mx-auto w-full">
         <button onClick={() => { setMode('signin'); setError(null); setResetSent(false); }}
-          className="flex items-center gap-1.5 text-xs font-mono text-text-muted
-            hover:text-text-secondary transition-colors mb-6">
+          className="flex items-center gap-1.5 text-xs font-mono text-text-muted hover:text-text-secondary transition-colors mb-6">
           <ArrowLeft size={13} /> Back to sign in
         </button>
         <Logo />
-        <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-1">
-          Reset your password
-        </h2>
-        <p className="text-sm text-text-muted mb-6">
-          Enter your email and we'll send you a reset link.
-        </p>
+        <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-1">Reset your password</h2>
+        <p className="text-sm text-text-muted mb-6">Enter your email and we'll send you a reset link.</p>
         <div className="bg-bg-surface border border-border rounded-2xl p-6 space-y-4">
           {resetSent ? (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <MailCheck size={32} className={isDoctor ? 'text-accent-cyan' : 'text-accent-teal'} />
               <p className="text-sm font-semibold text-text-primary">Reset link sent!</p>
-              <p className="text-xs text-text-muted">
-                Check <span className="font-mono text-text-secondary">{email}</span> for the password reset link.
-              </p>
+              <p className="text-xs text-text-muted">Check <span className="font-mono text-text-secondary">{email}</span> for the password reset link.</p>
             </div>
           ) : (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">
-                  Email Address
-                </label>
+                <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">Email Address</label>
                 <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
-                    <Mail size={14} />
-                  </span>
-                  <input type="email" required value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="w-full bg-bg-elevated border border-border rounded-xl
-                      pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
-                      placeholder:text-text-muted outline-none transition-colors"
-                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"><Mail size={14} /></span>
+                  <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com"
+                    className="w-full bg-bg-elevated border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono placeholder:text-text-muted outline-none transition-colors" />
                 </div>
               </div>
-              {error && (
-                <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-3 py-2">
-                  <p className="text-xs font-mono text-status-critical">{error}</p>
-                </div>
-              )}
+              {error && <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-3 py-2"><p className="text-xs font-mono text-status-critical">{error}</p></div>}
               <button type="submit" disabled={loading}
-                className={`w-full py-2.5 rounded-xl text-sm font-semibold font-mono
-                  active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all
-                  ${isDoctor
-                    ? 'bg-accent-cyan text-white hover:bg-accent-cyan-dim'
-                    : 'bg-accent-teal text-white hover:bg-accent-teal-dim'}`}>
+                className={`w-full py-2.5 rounded-xl text-sm font-semibold font-mono active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all ${isDoctor ? 'bg-accent-cyan text-white hover:bg-accent-cyan-dim' : 'bg-accent-teal text-white hover:bg-accent-teal-dim'}`}>
                 {loading ? 'Sending…' : 'Send reset link'}
               </button>
             </form>
@@ -309,38 +268,29 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
     );
   }
 
+  // ── Main sign-in / sign-up form ────────────────────────────────────────────
   return (
     <div className="animate-fade-up max-w-[440px] mx-auto w-full">
       <button onClick={() => setView('landing')}
-        className="flex items-center gap-1.5 text-xs font-mono text-text-muted
-          hover:text-text-secondary transition-colors mb-6">
+        className="flex items-center gap-1.5 text-xs font-mono text-text-muted hover:text-text-secondary transition-colors mb-6">
         <ArrowLeft size={13} /> Back to role selection
       </button>
       <Logo />
 
       <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-5
-        ${isDoctor
-          ? 'bg-accent-cyan/10 border border-accent-cyan/25'
-          : 'bg-accent-teal/10 border border-accent-teal/25'}`}>
-        {isDoctor
-          ? <BadgeCheck size={12} className="text-accent-cyan" />
-          : <Users      size={12} className="text-accent-teal" />}
-        <span className={`text-[11px] font-mono font-semibold
-          ${isDoctor ? 'text-accent-cyan' : 'text-accent-teal'}`}>
+        ${isDoctor ? 'bg-accent-cyan/10 border border-accent-cyan/25' : 'bg-accent-teal/10 border border-accent-teal/25'}`}>
+        {isDoctor ? <BadgeCheck size={12} className="text-accent-cyan" /> : <Users size={12} className="text-accent-teal" />}
+        <span className={`text-[11px] font-mono font-semibold ${isDoctor ? 'text-accent-cyan' : 'text-accent-teal'}`}>
           {isDoctor ? 'Doctor Portal' : 'Family Portal'}
         </span>
       </div>
 
       <h2 className="font-display text-2xl font-700 text-text-primary tracking-tight mb-1">
-        {mode === 'signin'
-          ? (isDoctor ? 'Welcome back, Doctor' : 'Stay connected')
-          : 'Create your account'}
+        {mode === 'signin' ? (isDoctor ? 'Welcome back, Doctor' : 'Stay connected') : 'Create your account'}
       </h2>
       <p className="text-sm text-text-muted mb-6">
         {mode === 'signin'
-          ? (isDoctor
-              ? 'Sign in to access your patient dashboard'
-              : "Monitor your loved one's health in real time")
+          ? (isDoctor ? 'Sign in to access your patient dashboard' : "Monitor your loved one's health in real time")
           : 'Fill in your details to get started'}
       </p>
 
@@ -349,78 +299,47 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
 
           {mode === 'signup' && (
             <div>
-              <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">
-                Full Name
-              </label>
+              <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">Full Name</label>
               <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
-                  <User size={14} />
-                </span>
-                <input type="text" required minLength={2}
-                  value={fullName} onChange={(e) => setFullName(e.target.value)}
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"><User size={14} /></span>
+                <input type="text" required minLength={2} value={fullName} onChange={(e) => setFullName(e.target.value)}
                   placeholder={isDoctor ? 'Dr. Amaka Okonkwo' : 'Your full name'}
-                  className="w-full bg-bg-elevated border border-border rounded-xl
-                    pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
-                    placeholder:text-text-muted outline-none transition-colors"
-                />
+                  className="w-full bg-bg-elevated border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono placeholder:text-text-muted outline-none transition-colors" />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">
-              Email Address
-            </label>
+            <label className="block text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest mb-1.5">Email Address</label>
             <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
-                <Mail size={14} />
-              </span>
-              <input type="email" required
-                value={email} onChange={(e) => setEmail(e.target.value)}
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"><Mail size={14} /></span>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder={isDoctor ? 'doctor@hospital.com' : 'yourname@email.com'}
-                className="w-full bg-bg-elevated border border-border rounded-xl
-                  pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono
-                  placeholder:text-text-muted outline-none transition-colors"
-              />
+                className="w-full bg-bg-elevated border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-text-primary font-mono placeholder:text-text-muted outline-none transition-colors" />
             </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest">
-                Password
-              </label>
+              <label className="text-[11px] font-mono font-semibold text-text-muted uppercase tracking-widest">Password</label>
               {mode === 'signin' && (
-                <button type="button"
-                  onClick={() => { setMode('forgot'); setError(null); }}
-                  className={`text-[11px] font-mono transition-colors
-                    ${isDoctor
-                      ? 'text-text-muted hover:text-accent-cyan'
-                      : 'text-text-muted hover:text-accent-teal'}`}>
+                <button type="button" onClick={() => { setMode('forgot'); setError(null); }}
+                  className={`text-[11px] font-mono transition-colors ${isDoctor ? 'text-text-muted hover:text-accent-cyan' : 'text-text-muted hover:text-accent-teal'}`}>
                   Forgot password?
                 </button>
               )}
             </div>
             <div className={`relative focus-within:ring-2 rounded-xl transition-all ${accentRing}`}>
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
-                <Lock size={14} />
-              </span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"><Lock size={14} /></span>
               <input type={showPass ? 'text' : 'password'} required minLength={6}
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full bg-bg-elevated border border-border rounded-xl
-                  pl-9 pr-10 py-2.5 text-sm text-text-primary font-mono
-                  placeholder:text-text-muted outline-none transition-colors"
-              />
+                value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password"
+                className="w-full bg-bg-elevated border border-border rounded-xl pl-9 pr-10 py-2.5 text-sm text-text-primary font-mono placeholder:text-text-muted outline-none transition-colors" />
               <button type="button" onClick={() => setShowPass((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted
-                  hover:text-text-secondary transition-colors">
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors">
                 {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
-            {mode === 'signup' && (
-              <p className="text-[10px] font-mono text-text-muted mt-1">Minimum 6 characters</p>
-            )}
+            {mode === 'signup' && <p className="text-[10px] font-mono text-text-muted mt-1">Minimum 6 characters</p>}
           </div>
 
           {error && (
@@ -430,43 +349,29 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
           )}
 
           <button type="submit" disabled={loading}
-            className={`w-full py-2.5 rounded-xl text-sm font-semibold font-mono
-              active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all duration-150
-              ${isDoctor
-                ? 'bg-accent-cyan text-white hover:bg-accent-cyan-dim'
-                : 'bg-accent-teal text-white hover:bg-accent-teal-dim'}`}>
-            {loading
-              ? 'Please wait…'
-              : mode === 'signin'
-                ? (isDoctor ? 'Sign in to Dashboard' : 'View Patient Vitals')
-                : 'Create Account'}
+            className={`w-full py-2.5 rounded-xl text-sm font-semibold font-mono active:scale-[0.98]
+              disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150
+              ${isDoctor ? 'bg-accent-cyan text-white hover:bg-accent-cyan-dim' : 'bg-accent-teal text-white hover:bg-accent-teal-dim'}`}>
+            {loading ? 'Please wait…' : mode === 'signin' ? (isDoctor ? 'Sign in to Dashboard' : 'View Patient Vitals') : 'Create Account'}
           </button>
         </form>
 
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-[11px] font-mono text-text-muted">
-            {mode === 'signin' ? 'New here?' : 'Already have an account?'}
-          </span>
+          <span className="text-[11px] font-mono text-text-muted">{mode === 'signin' ? 'New here?' : 'Already have an account?'}</span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        <button type="button"
-          onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
+        <button type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
           className={`block w-full text-center text-xs font-mono font-semibold transition-colors
-            ${isDoctor
-              ? 'text-accent-cyan hover:text-accent-cyan-dim'
-              : 'text-accent-teal hover:text-accent-teal-dim'}`}>
+            ${isDoctor ? 'text-accent-cyan hover:text-accent-cyan-dim' : 'text-accent-teal hover:text-accent-teal-dim'}`}>
           {mode === 'signin' ? 'Create a new account →' : '← Sign in instead'}
         </button>
       </div>
 
       <div className="flex items-center justify-center gap-1.5 mt-4">
         <Shield size={12} className="text-text-muted" />
-        <span className="text-[11px] font-mono text-text-muted">
-          HIPAA-compliant · End-to-end encrypted
-        </span>
+        <span className="text-[11px] font-mono text-text-muted">HIPAA-compliant · End-to-end encrypted</span>
       </div>
     </div>
   );
