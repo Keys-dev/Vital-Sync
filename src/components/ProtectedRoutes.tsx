@@ -13,8 +13,7 @@ export default function ProtectedRoute({ requiredRole, guestOnly }: Props) {
   const { profile, loading: profileLoading } = useProfile();
 
   // Wait for auth to resolve
-  if (authLoading || (user && profileLoading)) {
-    return (
+if (authLoading || profileLoading) {    return (
       <div className="min-h-screen bg-bg-base grid-bg flex items-center justify-center">
         <div className="flex items-center gap-3">
           <span className="w-2 h-2 rounded-full bg-accent-cyan vital-pulse" />
