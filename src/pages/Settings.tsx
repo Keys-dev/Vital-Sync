@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { User, Wifi, Bell, Thermometer, RefreshCw, Shield, Save, ChevronRight } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
@@ -36,6 +38,8 @@ function Row({ label, description, children }: { label: string; description?: st
 
 export default function Settings() {
   const { settings, profile, updateSetting } = useSettings();
+  const { signOut } = useAuthContext();
+  const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
@@ -159,7 +163,10 @@ export default function Settings() {
           </div>
           <RefreshCw size={14} className="text-text-muted" />
         </div>
-        <div className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-bg-elevated/50 transition-colors text-status-critical">
+        <div
+  onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
+  className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-bg-elevated/50 transition-colors text-status-critical"
+>
           <div>
             <p className="text-sm font-medium">Sign Out</p>
             <p className="text-xs opacity-70">End current session</p>
