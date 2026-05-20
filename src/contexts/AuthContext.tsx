@@ -35,36 +35,40 @@ const fetchProfile = async (userId: string) => {
 };
 
   useEffect(() => {
-    // Get initial session + profile together
-    supabase.auth.getSession().then(async ({ data }) => {
-      const sessionUser = data.session?.user ?? null;
-      setSession(data.session);
+  // Safety net — never stay loading more than 5 seconds
+  const timeout = setTimeout(() => setLoading(false), 5000);
+
+  // Get initial session + profile together
+  supabase.auth.getSession().then(async ({ data }) => {
+    clearTimeout(timeout);
+    const sessionUser = data.session?.user ?? null;
+    setSession(data.session);
+    setUser(sessionUser);
+
+    if (sessionUser) {
+      await fetchProfile(sessionUser.id);
+    }
+    setLoading(false);
+  });
+
+  // Listen for auth changes
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    async (_event, session) => {
+      const sessionUser = session?.user ?? null;
+      setSession(session);
       setUser(sessionUser);
 
       if (sessionUser) {
         await fetchProfile(sessionUser.id);
+      } else {
+        setProfile(null);
       }
       setLoading(false);
-    });
+    }
+  );
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const sessionUser = session?.user ?? null;
-        setSession(session);
-        setUser(sessionUser);
-
-        if (sessionUser) {
-          await fetchProfile(sessionUser.id);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+  return () => subscription.unsubscribe();
+}, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();

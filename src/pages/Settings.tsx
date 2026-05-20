@@ -164,9 +164,11 @@ export default function Settings() {
           <RefreshCw size={14} className="text-text-muted" />
         </div>
         <div
-  onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
-  className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-bg-elevated/50 transition-colors text-status-critical"
->
+            onClick={() => {
+              navigate('/auth', { replace: true });
+              signOut();
+            }}
+            className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-bg-elevated/50 transition-colors text-status-critical">
           <div>
             <p className="text-sm font-medium">Sign Out</p>
             <p className="text-xs opacity-70">End current session</p>
