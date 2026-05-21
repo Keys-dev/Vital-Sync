@@ -15,18 +15,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return new Response('Method Not Allowed', { status: 405 });
 
   let body: {
-    channel_id:  string;
-    heart_rate:  number | null;
-    spo2:        number | null;
-    temperature: number | null;
-    latitude:    number | null;
-    longitude:   number | null;
+    channel_id:   string;
+    heart_rate:   number | null;
+    temperature:  number | null;
+    systolic_bp:  number | null;
+    diastolic_bp: number | null;
+    latitude:     number | null;
+    longitude:    number | null;
   };
 
   try        { body = await req.json(); }
   catch (_e) { return new Response('Invalid JSON', { status: 400 }); }
 
-  const { channel_id, heart_rate, spo2, temperature, latitude, longitude } = body;
+  const { channel_id, heart_rate, temperature, systolic_bp, diastolic_bp, latitude, longitude } = body;
   if (!channel_id) return new Response('Missing channel_id', { status: 422 });
 
   const { data: patient } = await supabase
@@ -38,12 +39,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!patient) return new Response('Unknown channel — skipped', { status: 200 });
 
   const { error } = await supabase.from('vitals_log').insert({
-    patient_id:  patient.id,
-    heart_rate:  heart_rate  ?? null,
-    spo2:        spo2        ?? null,
-    temperature: temperature ?? null,
-    latitude:    latitude    ?? null,
-    longitude:   longitude   ?? null,
+    patient_id:   patient.id,
+    heart_rate:   heart_rate   ?? null,
+    temperature:  temperature  ?? null,
+    systolic_bp:  systolic_bp  ?? null,
+    diastolic_bp: diastolic_bp ?? null,
+    latitude:     latitude     ?? null,
+    longitude:    longitude    ?? null,
   });
 
   if (error) return new Response('Insert failed', { status: 500 });

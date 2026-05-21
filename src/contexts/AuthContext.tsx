@@ -1,3 +1,4 @@
+import { requestNotificationPermission } from '@/services/notifications';
 import {
   createContext, useContext, useEffect, useState, type ReactNode,
 } from 'react';
@@ -64,6 +65,11 @@ const fetchProfile = async (userId: string) => {
         setProfile(null);
       }
       setLoading(false);
+
+      // inside onAuthStateChange, after setLoading(false):
+      if (sessionUser) {
+        requestNotificationPermission();
+}
     }
   );
 

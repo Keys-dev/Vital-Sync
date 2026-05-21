@@ -39,7 +39,6 @@ export interface AccessRequest {
   requester_email: string;
 }
 
-// keep the rest of the existing file below this line
 
 // ─── Patient & Vitals ──────────────────────────────────────────────────────
 
