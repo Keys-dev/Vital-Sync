@@ -19,8 +19,9 @@ export function useAlerts() {
       });
 
     // ── Realtime: new alert inserted by DB trigger ─────────────────────────
+    const channelName = `alerts-channel-${Date.now()}`;
     const channel = supabase
-      .channel('alerts-channel')
+  .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'alerts' },
