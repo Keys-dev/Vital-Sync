@@ -157,12 +157,24 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
 
     } else {
       // ── Sign in ──────────────────────────────────────────────────────────
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      const signInPromise = supabase.auth.signInWithPassword({ email, password });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Sign in timed out. Please check your connection and try again.')), 20000)
+      );
+
+      let signInError: { message: string } | null = null;
+      try {
+        const result = await Promise.race([signInPromise, timeoutPromise]);
+        signInError = result.error;
+      } catch (err: unknown) {
+        signInError = { message: (err as Error).message };
+      }
+
       if (signInError) { setError(signInError.message); setLoading(false); return; }
 
-      const user = data.user;
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setError('Could not retrieve user after sign-in.'); setLoading(false); return; }
-      
+
       const { data: profile } = await supabase
         .from('profiles').select('role').eq('id', user.id).maybeSingle();
 

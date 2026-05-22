@@ -31,8 +31,9 @@ const fetchProfile = async (userId: string) => {
     .select('*')
     .eq('id', userId)
     .maybeSingle();
-  console.log('fetchProfile result:', { data, error, userId });
+  console.log('fetchProfile result:', { data, error, userId });  // already there
   setProfile(data ?? null);
+  setLoading(false);  // ← ADD THIS LINE
 };
 
   useEffect(() => {
