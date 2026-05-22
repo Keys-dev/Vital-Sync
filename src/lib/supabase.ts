@@ -47,11 +47,11 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: true,
   },
   global: {
-    fetch: (url, options) => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
-      return fetch(url, { ...options, signal: controller.signal })
-        .finally(() => clearTimeout(timeout));
-    },
+    // fetch: (url, options) => {
+    //   const controller = new AbortController();
+    //   const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
+    //   return fetch(url, { ...options, signal: controller.signal })
+    //     .finally(() => clearTimeout(timeout));
+    // },
   },
 });
