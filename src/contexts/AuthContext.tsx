@@ -25,31 +25,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string, userEmail?: string) => {
+  const fetchProfile = async (userId: string, sessionUser?: User | null) => {
   console.log('fetchProfile START', userId);
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
+  // Get role from session metadata instantly — no network call needed
+  const role = sessionUser?.user_metadata?.role ?? 'doctor';
+  const email = sessionUser?.email ?? '';
 
-  console.log('fetchProfile DONE', { data, error });
-
-  if (data) {
-    setProfile(data as Profile);
-    setLoading(false);
-    return;
-  }
-
-  // Fallback — use email from session (no extra network call)
+  // Set profile immediately from session data
   setProfile({
     id: userId,
-    email: userEmail ?? '',
-    role: 'doctor',
-    full_name: '',
+    email,
+    role: role as 'doctor' | 'family',
+    full_name: sessionUser?.user_metadata?.full_name ?? '',
   } as Profile);
   setLoading(false);
+  console.log('fetchProfile DONE from metadata', { role, email });
 };
 
   useEffect(() => {
@@ -61,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(sessionUser);
       if (sessionUser) {
-        await fetchProfile(sessionUser.id, sessionUser.email);
+        await fetchProfile(sessionUser.id, sessionUser);
       } else {
         setLoading(false);
       }
@@ -84,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(sessionUser);
         if (sessionUser) {
-          await fetchProfile(sessionUser.id, sessionUser.email);
+          await fetchProfile(sessionUser.id, sessionUser);
           requestNotificationPermission();
         }
       }

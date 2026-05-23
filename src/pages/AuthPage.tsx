@@ -141,8 +141,13 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
 
     if (mode === 'signup') {
       // ── Sign up ──────────────────────────────────────────────────────────
-      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError) { setError(signUpError.message); setLoading(false); return; }
+      const { data, error: signUpError } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    data: { role, full_name: fullName.trim() }
+  }
+});
 
       const userId = data.user?.id;
       if (!userId) { setError('Sign-up failed: no user ID returned. Please try again.'); setLoading(false); return; }
