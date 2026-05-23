@@ -28,32 +28,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string) => {
   console.log('fetchProfile START', userId);
   
-  // Try profiles table first
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-  
-  console.log('fetchProfile DONE', { data, error });
-  
-  if (data) {
-    setProfile(data ?? null);
-    setLoading(false);
-    return;
-  }
-
-  // Fallback: get user metadata directly from auth (no extra network request)
-  console.log('fetchProfile FALLBACK to auth metadata');
+  console.log('calling getUser...');
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    setProfile({
-      id: user.id,
-      email: user.email ?? '',
-      role: (user.user_metadata?.role ?? 'doctor') as 'doctor' | 'family',
-      full_name: user.user_metadata?.full_name ?? '',
-    } as Profile);
-  }
+  console.log('getUser DONE', user?.id);
+  
+  setProfile({
+    id: userId,
+    email: user?.email ?? '',
+    role: 'doctor',
+    full_name: '',
+  } as Profile);
+  
   setLoading(false);
 };
 
