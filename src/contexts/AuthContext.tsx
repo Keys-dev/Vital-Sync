@@ -28,38 +28,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string) => {
   console.log('fetchProfile START', userId);
   
-  const { data: { user } } = await supabase.auth.getUser();
-  console.log('fetchProfile auth user', user);
+  // Try profiles table first
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
   
-  if (user) {
-    // Get role from profiles table with a short timeout fallback
-    const profilePromise = supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
-      setTimeout(() => resolve({ data: null, error: new Error('timeout') }), 3000)
-    );
-
-    const { data } = await Promise.race([profilePromise, timeoutPromise]);
-    console.log('fetchProfile DONE', data);
-
-    if (data) {
-      setProfile(data as Profile);
-    } else {
-      // Fallback to auth metadata
-      console.log('fetchProfile using metadata fallback');
-      setProfile({
-        id: user.id,
-        email: user.email ?? '',
-        role: 'doctor',
-        full_name: user.user_metadata?.full_name ?? '',
-      } as Profile);
-    }
+  console.log('fetchProfile DONE', { data, error });
+  
+  if (data) {
+    setProfile(data ?? null);
+    setLoading(false);
+    return;
   }
-  
+
+  // Fallback: get user metadata directly from auth (no extra network request)
+  console.log('fetchProfile FALLBACK to auth metadata');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    setProfile({
+      id: user.id,
+      email: user.email ?? '',
+      role: (user.user_metadata?.role ?? 'doctor') as 'doctor' | 'family',
+      full_name: user.user_metadata?.full_name ?? '',
+    } as Profile);
+  }
   setLoading(false);
 };
 
