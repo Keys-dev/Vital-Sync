@@ -31,15 +31,23 @@ export default function ProtectedRoute({ requiredRole, guestOnly }: Props) {
   }
 
   // Protected: must be signed in
-  if (!user) return <Navigate to="/auth" replace />;
+// Protected: must be signed in
+if (!user) return <Navigate to="/auth" replace />;
 
-  // Role-specific: must have matching role
-  if (requiredRole && profile?.role !== requiredRole) {
-    if (profile) {
-      return <Navigate to={profile.role === 'doctor' ? '/dashboard' : '/family'} replace />;
-    }
-    return <Navigate to="/auth" replace />;
-  }
+// Wait for profile to load before making role decisions
+if (!profile) {
+  return (
+    <div className="min-h-screen bg-bg-base grid-bg flex items-center justify-center">
+      <div className="flex items-center gap-3">
+        <span className="w-2 h-2 rounded-full bg-accent-cyan vital-pulse" />
+        <span className="text-sm font-mono text-text-muted">Loading…</span>
+      </div>
+    </div>
+  );
+}
 
-  return <Outlet />;
+// Role-specific: must have matching role
+if (requiredRole && profile.role !== requiredRole) {
+  return <Navigate to={profile.role === 'doctor' ? '/dashboard' : '/family'} replace />;
+}
 }

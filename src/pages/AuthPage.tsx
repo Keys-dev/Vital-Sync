@@ -186,7 +186,7 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
       }
 
       // Give AuthContext time to sync before ProtectedRoute runs
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 500));
       navigate(profile.role === 'doctor' ? '/dashboard' : '/family', { replace: true });
     }
   };
