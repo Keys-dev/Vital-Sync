@@ -159,7 +159,7 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
       // ── Sign in ──────────────────────────────────────────────────────────
       const signInPromise = supabase.auth.signInWithPassword({ email, password });
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Sign in timed out. Please check your connection and try again.')), 20000)
+        setTimeout(() => reject(new Error('Sign in timed out. Please check your connection and try again.')), 60000)
       );
 
       let signInError: { message: string } | null = null;
