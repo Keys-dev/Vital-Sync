@@ -141,12 +141,12 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
 
     if (mode === 'signup') {
       // ── Sign up ──────────────────────────────────────────────────────────
-      const { data, error: signUpError } = await supabase.auth.signUp({
-  email,
-  password,
-  options: {
-    data: { role, full_name: fullName.trim() }
-  }
+      const { data } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { role, full_name: fullName.trim() }
+        }
 });
 
       const userId = data.user?.id;
@@ -162,37 +162,18 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
 
     } else {
       // ── Sign in ──────────────────────────────────────────────────────────
-      const signInPromise = supabase.auth.signInWithPassword({ email, password });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Sign in timed out. Please check your connection and try again.')), 60000)
-      );
-
-      let signInError: { message: string } | null = null;
-      try {
-        const result = await Promise.race([signInPromise, timeoutPromise]);
-        signInError = result.error;
-      } catch (err: unknown) {
-        signInError = { message: (err as Error).message };
-      }
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
       if (signInError) { setError(signInError.message); setLoading(false); return; }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = data.user;
       if (!user) { setError('Could not retrieve user after sign-in.'); setLoading(false); return; }
 
-      const { data: profile } = await supabase
-        .from('profiles').select('role').eq('id', user.id).maybeSingle();
+      // Get role from user metadata — no extra network call needed
+      const role = user.user_metadata?.role ?? (isDoctor ? 'doctor' : 'family');
 
-      if (!profile) {
-        setError('No account found for this email. Please sign up first.');
-        await supabase.auth.signOut();
-        setLoading(false);
-        return;
-      }
-
-      // Give AuthContext time to sync before ProtectedRoute runs
       await new Promise(resolve => setTimeout(resolve, 500));
-      navigate(profile.role === 'doctor' ? '/dashboard' : '/family', { replace: true });
+      navigate(role === 'doctor' ? '/dashboard' : '/family', { replace: true });
     }
   };
 
