@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
 const fetchProfile = async (userId: string) => {
+    console.log('fetchProfile START', userId);
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -66,6 +67,7 @@ const fetchProfile = async (userId: string) => {
         setProfile(null);
       }
       setLoading(false);
+        console.log('onAuthStateChange COMPLETE');
 
       // inside onAuthStateChange, after setLoading(false):
       if (sessionUser) {
