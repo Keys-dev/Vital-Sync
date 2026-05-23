@@ -26,21 +26,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-  console.log('fetchProfile START', userId);
-  
-  console.log('calling getUser...');
-  const { data: { user } } = await supabase.auth.getUser();
-  console.log('getUser DONE', user?.id);
-  
-  setProfile({
-    id: userId,
-    email: user?.email ?? '',
-    role: 'doctor',
-    full_name: '',
-  } as Profile);
-  
-  setLoading(false);
-};
+    console.log('fetchProfile START', userId);
+    setProfile({
+      id: userId,
+      email: '',
+      role: 'doctor',
+      full_name: '',
+    } as Profile);
+    setLoading(false);
+    console.log('fetchProfile DONE - hardcoded');
+  };
 
   useEffect(() => {
     const timeout = setTimeout(() => setLoading(false), 5000);
@@ -75,8 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(sessionUser);
         if (sessionUser) {
           await fetchProfile(sessionUser.id);
-        }
-        if (sessionUser) {
           requestNotificationPermission();
         }
       }
