@@ -25,17 +25,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
-    console.log('fetchProfile START', userId);
-    setProfile({
-      id: userId,
-      email: '',
-      role: 'doctor',
-      full_name: '',
-    } as Profile);
+  const fetchProfile = async (userId: string, userEmail?: string) => {
+  console.log('fetchProfile START', userId);
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  console.log('fetchProfile DONE', { data, error });
+
+  if (data) {
+    setProfile(data as Profile);
     setLoading(false);
-    console.log('fetchProfile DONE - hardcoded');
-  };
+    return;
+  }
+
+  // Fallback — use email from session (no extra network call)
+  setProfile({
+    id: userId,
+    email: userEmail ?? '',
+    role: 'doctor',
+    full_name: '',
+  } as Profile);
+  setLoading(false);
+};
 
   useEffect(() => {
     const timeout = setTimeout(() => setLoading(false), 5000);
@@ -46,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(sessionUser);
       if (sessionUser) {
-        await fetchProfile(sessionUser.id);
+        await fetchProfile(sessionUser.id, sessionUser.email);
       } else {
         setLoading(false);
       }
@@ -69,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(sessionUser);
         if (sessionUser) {
-          await fetchProfile(sessionUser.id);
+          await fetchProfile(sessionUser.id, sessionUser.email);
           requestNotificationPermission();
         }
       }
