@@ -170,7 +170,7 @@ function AuthForm({ role, setView }: { role: 'doctor' | 'family'; setView: (v: V
       if (!user) { setError('Could not retrieve user after sign-in.'); setLoading(false); return; }
 
       // Get role from user metadata — no extra network call needed
-      const role = user.user_metadata?.role ?? (isDoctor ? 'doctor' : 'family');
+      const role = user.user_metadata?.role ?? 'family';
 
       await new Promise(resolve => setTimeout(resolve, 500));
       navigate(role === 'doctor' ? '/dashboard' : '/family', { replace: true });
