@@ -150,12 +150,13 @@ export interface UserProfile {
 }
 
 export interface AppSettings {
-  alertSound: boolean;
-  autoRefresh: boolean;
-  refreshInterval: number; // seconds
-  temperatureUnit: 'C' | 'F';
-  theme: 'dark' | 'light';
-  mqttBroker: string;
+  alertsEnabled:    boolean;  // ← NEW: master on/off for all alerts
+  alertSound:       boolean;
+  autoRefresh:      boolean;
+  refreshInterval:  number;   // seconds
+  temperatureUnit:  'C' | 'F';
+  theme:            'dark' | 'light';
+  mqttBroker:       string;
   thingspeakApiKey: string;
   googleMapsApiKey: string;
 }
