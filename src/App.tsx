@@ -18,6 +18,8 @@ import FamilyLayout    from '@/layouts/FamilyLayout';
 import FamilyDashboard from '@/pages/family/FamilyDashboard';
 import FamilyPatient   from '@/pages/family/FamilyPatient';
 
+import { AlertsProvider } from '@/contexts/AlertsContext';
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -35,9 +37,13 @@ export default function App() {
           </div>
         } />
 
-        {/* Doctor routes */}
+        {/* Doctor routes — wrapped in AlertsProvider so one subscription serves all pages */}
         <Route element={<ProtectedRoute requiredRole="doctor" />}>
-          <Route element={<Layout />}>
+          <Route element={
+            <AlertsProvider>
+              <Layout />
+            </AlertsProvider>
+          }>
             <Route path="dashboard"                element={<Dashboard />} />
             <Route path="patients"                 element={<PatientList />} />
             <Route path="trends"                   element={<HealthTrends />} />

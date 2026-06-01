@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Bell, BellOff, CheckCheck, AlertTriangle, Info, Filter } from 'lucide-react';
-import { useAlerts } from '@/hooks/useAlerts';
+import { useAlertsContext } from '@/contexts/AlertsContext';
 import { timeAgo } from '@/services/vitals';
 import type { Alert, AlertSeverity } from '@/types';
 
@@ -83,7 +83,7 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
 }
 
 export default function Alerts() {
-  const { alerts, unacknowledged, critical, acknowledge, acknowledgeAll } = useAlerts();
+  const { alerts, unacknowledged, critical, acknowledge, acknowledgeAll } = useAlertsContext();
   const [filter, setFilter] = useState<'all' | 'unread' | AlertSeverity>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Activity, Thermometer, AlertTriangle, Users, Wifi, ChevronRight } from 'lucide-react';
 import { usePatients } from '@/hooks/usePatients';
-import { useAlerts } from '@/hooks/useAlerts';
+import { useAlertsContext } from '@/contexts/AlertsContext';
 import { statusBg, isVitalAbnormal, timeAgo } from '@/services/vitals';
 import type { Patient } from '@/types';
 
@@ -82,7 +82,7 @@ function PatientRow({ patient, onClick }: { patient: Patient; onClick: () => voi
 
 export default function Dashboard() {
   const { patients, stats, isLive } = usePatients();
-  const { unacknowledged } = useAlerts();
+  const { unacknowledged } = useAlertsContext();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'critical' | 'warning' | 'stable'>('all');
 

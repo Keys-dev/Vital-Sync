@@ -2,11 +2,11 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileNav from './MobileNav';
-import { useAlerts } from '@/hooks/useAlerts';
+import { useAlertsContext } from '@/contexts/AlertsContext';
 import { usePatients } from '@/hooks/usePatients';
 
 export default function Layout() {
-  const { unacknowledged } = useAlerts();
+  const { unacknowledged } = useAlertsContext();
   const { isLive } = usePatients();
   const alertCount = unacknowledged.length;
 
