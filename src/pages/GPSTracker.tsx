@@ -2,9 +2,10 @@ import { useState, useCallback } from 'react';
 import { MapPin, Navigation, Wifi, WifiOff, Activity, Settings2 } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, useMap, InfoWindow } from '@vis.gl/react-google-maps';
 import { usePatients } from '@/hooks/usePatients';
-import { useSettings } from '@/hooks/useSettings';
 import { statusBg, timeAgo } from '@/services/vitals';
 import type { Patient } from '@/types';
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
 // Lagos hospital campus center
 const MAP_CENTER = { lat: 6.5244, lng: 3.3792 };
@@ -204,11 +205,10 @@ function NoKeyPlaceholder() {
 
 export default function GPSTracker() {
   const { patients, isLive } = usePatients();
-  const { settings } = useSettings();
   const [selected, setSelected] = useState<Patient | null>(null);
   const [wardFilter, setWardFilter] = useState<string>('All');
 
-  const apiKey = settings.googleMapsApiKey;
+  const apiKey = GOOGLE_MAPS_API_KEY;
   const wards = ['All', ...Array.from(new Set(patients.map((p) => p.ward)))];
   const filtered = wardFilter === 'All' ? patients : patients.filter((p) => p.ward === wardFilter);
 

@@ -14,8 +14,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   refreshInterval:  5,
   temperatureUnit:  'C',
   theme:            'dark',
-  // thingspeakApiKey: '',
-  // googleMapsApiKey: '',
+  googleMapsApiKey: '',
 };
 
 function loadSettings(): AppSettings {

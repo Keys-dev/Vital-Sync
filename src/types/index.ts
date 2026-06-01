@@ -156,6 +156,7 @@ export interface AppSettings {
   refreshInterval:  number;   // seconds
   temperatureUnit:  'C' | 'F';
   theme:            'dark' | 'light';
+  googleMapsApiKey: string;   // optional Google Maps API key for GPS Tracker
 }
 
 // ─── Dashboard Stats ───────────────────────────────────────────────────────
