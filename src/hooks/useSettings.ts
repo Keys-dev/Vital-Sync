@@ -14,9 +14,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   refreshInterval:  5,
   temperatureUnit:  'C',
   theme:            'dark',
-  mqttBroker:       'broker.hivemq.com',
-  thingspeakApiKey: '',
-  googleMapsApiKey: '',
+  // thingspeakApiKey: '',
+  // googleMapsApiKey: '',
 };
 
 function loadSettings(): AppSettings {

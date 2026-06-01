@@ -1,22 +1,11 @@
-/**
- * ThingSpeak Service
- * Handles fetching historical vital signs data from ThingSpeak channels.
- *
- * Field mapping (configure per your ThingSpeak channel):
- *   Field 1 → Heart Rate (bpm)
- *   Field 3 → Temperature (°C)
- *   Field 4 → Systolic BP (mmHg)
- *   Field 5 → Diastolic BP (mmHg)
- */
-
 import type { VitalHistory } from '@/types';
 
 interface ThingSpeakFeed {
   created_at: string;
   field1?: string;
+  field2?: string;
   field3?: string;
   field4?: string;
-  field5?: string;
 }
 
 interface ThingSpeakResponse {
@@ -25,7 +14,7 @@ interface ThingSpeakResponse {
 }
 
 class ThingSpeakService {
-  private apiKey = '';
+  private apiKey = import.meta.env.VITE_THINGSPEAK_API_KEY ?? '';
   private baseUrl = 'https://api.thingspeak.com';
 
   configure(apiKey: string) {
@@ -50,9 +39,9 @@ class ThingSpeakService {
           minute: '2-digit',
         }),
         heartRate: parseFloat(feed.field1 ?? '0'),
-        temperature: parseFloat(feed.field3 ?? '0'),
-        systolicBP: parseFloat(feed.field4 ?? '0'),
-        diastolicBP: parseFloat(feed.field5 ?? '0'),
+        temperature: parseFloat(feed.field2 ?? '0'),
+        systolicBP: parseFloat(feed.field3 ?? '0'),
+        diastolicBP: parseFloat(feed.field4 ?? '0'),
       }));
     } catch (err) {
       console.error('[ThingSpeak] Fetch error:', err);

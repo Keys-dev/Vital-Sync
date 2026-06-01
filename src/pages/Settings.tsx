@@ -149,33 +149,6 @@ export default function Settings() {
 
       {/* ── IoT Connectivity ──────────────────────────────────────────────── */}
       <Section title="IoT Connectivity" icon={Wifi}>
-        <Row label="MQTT Broker" description="Broker URL for real-time vital streaming">
-          <input
-            type="text"
-            value={settings.mqttBroker}
-            onChange={(e) => updateSetting('mqttBroker', e.target.value)}
-            className="bg-bg-elevated border border-border rounded-lg px-3 py-1.5 text-xs font-mono text-text-primary outline-none w-52 focus:border-accent-cyan/50 transition-colors"
-            placeholder="broker.hivemq.com"
-          />
-        </Row>
-        <Row label="ThingSpeak API Key" description="For fetching historical channel data">
-          <input
-            type="password"
-            value={settings.thingspeakApiKey}
-            onChange={(e) => updateSetting('thingspeakApiKey', e.target.value)}
-            className="bg-bg-elevated border border-border rounded-lg px-3 py-1.5 text-xs font-mono text-text-primary outline-none w-52 focus:border-accent-cyan/50 transition-colors"
-            placeholder="Your API key..."
-          />
-        </Row>
-        <Row label="Google Maps API Key" description="For real-time patient GPS tracking">
-          <input
-            type="password"
-            value={settings.googleMapsApiKey}
-            onChange={(e) => updateSetting('googleMapsApiKey', e.target.value)}
-            className="bg-bg-elevated border border-border rounded-lg px-3 py-1.5 text-xs font-mono text-text-primary outline-none w-52 focus:border-accent-cyan/50 transition-colors"
-            placeholder="AIza..."
-          />
-        </Row>
         <Row label="Connection Status" description="Current MQTT broker connection">
           <div className="flex items-center gap-2 text-xs font-mono text-status-stable">
             <span className="w-2 h-2 rounded-full bg-status-stable vital-pulse" />

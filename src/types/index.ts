@@ -156,9 +156,6 @@ export interface AppSettings {
   refreshInterval:  number;   // seconds
   temperatureUnit:  'C' | 'F';
   theme:            'dark' | 'light';
-  mqttBroker:       string;
-  thingspeakApiKey: string;
-  googleMapsApiKey: string;
 }
 
 // ─── Dashboard Stats ───────────────────────────────────────────────────────
