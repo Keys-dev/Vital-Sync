@@ -36,7 +36,6 @@ export function usePatients() {
       name:           p.full_name,
       age:            45,                          // Fallback — not in DB schema
       gender:         'Other',                     // Fallback
-      ward:           'General',                   // Fallback
       bedNumber:      `Bed ${p.id.slice(-2)}`,
       admissionDate:  new Date().toISOString(),    // Fallback
       diagnosis:      'Under observation',         // Fallback

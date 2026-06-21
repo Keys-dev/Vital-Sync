@@ -54,7 +54,7 @@ function PatientRow({ patient, onClick }: { patient: Patient; onClick: () => voi
         }`} />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-text-primary truncate">{patient.name}</p>
-          <p className="text-[10px] font-mono text-text-muted">{patient.bedNumber} · {patient.ward}</p>
+          <p className="text-[10px] font-mono text-text-muted">{patient.bedNumber}</p>
         </div>
       </div>
 

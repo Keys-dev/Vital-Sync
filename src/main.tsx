@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { AuthProvider } from '@/contexts/AuthContext';
 import App from './App';
 import './index.css';
+import 'leaflet/dist/leaflet.css';
 
 class ErrorBoundary extends Component<
   { children: ReactNode },

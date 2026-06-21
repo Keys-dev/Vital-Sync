@@ -44,7 +44,6 @@ export interface AccessRequest {
 
 export type PatientStatus = 'critical' | 'warning' | 'stable' | 'inactive';
 export type PatientGender = 'Male' | 'Female' | 'Other';
-export type Ward = 'ICU' | 'CCU' | 'General' | 'Emergency' | 'Pediatric';
 
 export interface VitalSigns {
   heartRate: number;         // bpm
@@ -74,7 +73,6 @@ export interface Patient {
   name: string;
   age: number;
   gender: PatientGender;
-  ward: Ward;
   bedNumber: string;
   admissionDate: string;
   diagnosis: string;

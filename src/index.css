@@ -18,6 +18,32 @@
   ::-webkit-scrollbar-thumb { background: #c2d4e4; border-radius: 2px; }
   ::-webkit-scrollbar-thumb:hover { background: #93b4cc; }
 
+  /* Pulsing live GPS marker (used by LiveMap.tsx via Leaflet divIcon) */
+  .gps-pulse-marker {
+    width: 16px;
+    height: 16px;
+    background: #22d3ee;
+    border: 2px solid white;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+  }
+  .gps-pulse-marker::after {
+    content: '';
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    left: -18px;
+    top: -18px;
+    border-radius: 50%;
+    background: rgba(34, 211, 238, 0.4);
+    animation: gps-pulse 2s infinite;
+  }
+  @keyframes gps-pulse {
+    0% { transform: scale(0.2); opacity: 1; }
+    100% { transform: scale(1.2); opacity: 0; }
+  }
+
   ::selection { background: rgba(0, 134, 168, 0.2); }
 }
 

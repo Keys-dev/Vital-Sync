@@ -96,3 +96,41 @@ export function statusBg(status: PatientStatus): string {
     default: return 'bg-slate-500/10 border-slate-500/30 text-status-inactive';
   }
 }
+
+// ─── GPS helpers (for the live tracking breadcrumb / telemetry sidebar) ────
+
+/** Great-circle distance between two lat/lng points, in kilometres. */
+export function haversineDistanceKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+): number {
+  const R = 6371; // Earth radius, km
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Speed in km/h between two timestamped GPS points.
+ * Returns null if the points are identical, out of order, or too close
+ * in time to give a meaningful reading (avoids divide-by-near-zero spikes).
+ */
+export function computeSpeedKmh(
+  prev: { lat: number; lng: number; timestamp: string },
+  curr: { lat: number; lng: number; timestamp: string }
+): number | null {
+  const dtHours =
+    (new Date(curr.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 3_600_000;
+
+  if (dtHours <= 0 || dtHours > 1) return null; // ignore bad/huge gaps
+
+  const distanceKm = haversineDistanceKm(prev, curr);
+  return distanceKm / dtHours;
+}

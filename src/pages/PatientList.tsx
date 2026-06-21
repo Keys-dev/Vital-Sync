@@ -3,9 +3,7 @@ import { Search, User, Heart, Thermometer, Activity, ChevronDown, ChevronUp, X }
 import { usePatients } from '@/hooks/usePatients';
 import { statusBg, isVitalAbnormal, timeAgo } from '@/services/vitals';
 import { getAlertsByPatient, getTimelineByPatient } from '@/data/alerts';
-import type { Patient, Ward } from '@/types';
-
-const wards: (Ward | 'All')[] = ['All', 'ICU', 'CCU', 'Emergency', 'General', 'Pediatric'];
+import type { Patient } from '@/types';
 
 function VitalRow({ label, value, unit, state }: { label: string; value: number; unit: string; state: 'critical' | 'warning' | 'normal' }) {
   const bar = { critical: 'bg-status-critical', warning: 'bg-status-warning', normal: 'bg-status-stable' };
@@ -65,7 +63,7 @@ function PatientModal({ patient, onClose }: { patient: Patient; onClose: () => v
           {/* Info grid */}
           <div className="grid grid-cols-2 gap-3 text-xs">
             {[
-              ['Ward', patient.ward], ['Bed', patient.bedNumber],
+              ['Bed', patient.bedNumber],
               ['Diagnosis', patient.diagnosis], ['Doctor', patient.doctorAssigned],
               ['Admitted', patient.admissionDate], ['Device', patient.deviceId],
               ['Emergency Contact', patient.emergencyContact],
@@ -171,7 +169,7 @@ function PatientCard({ patient, onClick }: { patient: Patient; onClick: () => vo
       </div>
 
       <div className="mt-3 pt-3 border-t border-border/50 flex justify-between text-[10px] font-mono text-text-muted">
-        <span>{patient.bedNumber} · {patient.ward}</span>
+        <span>{patient.bedNumber}</span>
         <span>{timeAgo(patient.vitals.timestamp)}</span>
       </div>
     </div>
@@ -181,8 +179,7 @@ function PatientCard({ patient, onClick }: { patient: Patient; onClick: () => vo
 export default function PatientList() {
   const { patients } = usePatients();
   const [search, setSearch] = useState('');
-  const [ward, setWard] = useState<Ward | 'All'>('All');
-  const [sort, setSort] = useState<'status' | 'name' | 'ward'>('status');
+  const [sort, setSort] = useState<'status' | 'name'>('status');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selected, setSelected] = useState<Patient | null>(null);
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -193,7 +190,6 @@ export default function PatientList() {
     .filter((p) => {
       const q = search.toLowerCase();
       return (
-        (ward === 'All' || p.ward === ward) &&
         (p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.diagnosis.toLowerCase().includes(q))
       );
     })
@@ -201,7 +197,6 @@ export default function PatientList() {
       let cmp = 0;
       if (sort === 'status') cmp = statusOrder[a.status] - statusOrder[b.status];
       if (sort === 'name') cmp = a.name.localeCompare(b.name);
-      if (sort === 'ward') cmp = a.ward.localeCompare(b.ward);
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
@@ -228,22 +223,9 @@ export default function PatientList() {
           />
         </div>
 
-        {/* Ward filter */}
-        <div className="flex gap-1 bg-bg-surface border border-border rounded-xl p-1 overflow-x-auto">
-          {wards.map((w) => (
-            <button
-              key={w}
-              onClick={() => setWard(w)}
-              className={`px-3 py-1 rounded-lg text-xs font-mono whitespace-nowrap transition-all ${ward === w ? 'bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/30' : 'text-text-muted hover:text-text-primary'}`}
-            >
-              {w}
-            </button>
-          ))}
-        </div>
-
         {/* Sort */}
         <div className="flex gap-1">
-          {(['status', 'name', 'ward'] as const).map((s) => (
+          {(['status', 'name'] as const).map((s) => (
             <button
               key={s}
               onClick={() => toggleSort(s)}
@@ -258,7 +240,7 @@ export default function PatientList() {
 
       {/* Count */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-mono text-text-muted">{filtered.length} patient{filtered.length !== 1 ? 's' : ''} · {ward !== 'All' ? ward : 'All wards'}</p>
+        <p className="text-xs font-mono text-text-muted">{filtered.length} patient{filtered.length !== 1 ? 's' : ''}</p>
         <div className="flex gap-1">
           {(['grid', 'list'] as const).map((v) => (
             <button key={v} onClick={() => setView(v)} className={`px-2 py-1 rounded text-xs font-mono capitalize ${view === v ? 'text-accent-cyan' : 'text-text-muted'}`}>{v}</button>
@@ -286,9 +268,9 @@ export default function PatientList() {
               </div>
               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border uppercase flex-shrink-0 ${statusBg(p.status)}`}>{p.status}</span>
               <p className="text-xs text-text-muted flex-1 truncate">{p.diagnosis}</p>
-              <p className="text-xs text-text-muted hidden md:block">{p.bedNumber} · {p.ward}</p>
+              <p className="text-xs text-text-muted hidden md:block">{p.bedNumber}</p>
               <p className="text-xs font-mono text-text-muted hidden lg:block">{p.doctorAssigned}</p>
-              <div className="flex gap-3 text-xs font-mono text-text-secondary hidden xl:flex">
+              <div className="flex gap-3 text-xs font-mono text-text-secondary">
                 <span className={isVitalAbnormal('heartRate', p.vitals.heartRate) !== 'normal' ? 'text-status-critical' : ''}>{p.vitals.heartRate} bpm</span>
                 
                 <span>{p.vitals.temperature}°C</span>

@@ -1,133 +1,48 @@
-import { useState, useCallback } from 'react';
-import { MapPin, Navigation, Wifi, WifiOff, Activity, Settings2 } from 'lucide-react';
-import { APIProvider, Map, AdvancedMarker, useMap, InfoWindow } from '@vis.gl/react-google-maps';
+import { useCallback, useState } from 'react';
+import { MapPin, Navigation, Wifi, WifiOff, Activity } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { usePatients } from '@/hooks/usePatients';
 import { statusBg, timeAgo } from '@/services/vitals';
 import type { Patient } from '@/types';
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-
 // Lagos hospital campus center
-const MAP_CENTER = { lat: 6.5244, lng: 3.3792 };
+const MAP_CENTER: [number, number] = [6.5244, 3.3792];
 
-// ─── Custom Marker ──────────────────────────────────────────────────────────
+// ─── Custom Marker (diamond pin, color-coded by status) ───────────────────
 
-function PatientMarker({
-  patient,
-  isSelected,
-  onSelect,
-}: {
-  patient: Patient;
-  isSelected: boolean;
-  onSelect: (p: Patient) => void;
-}) {
+function buildPatientIcon(patient: Patient, isSelected: boolean) {
   const color =
-    patient.status === 'critical'
-      ? '#ff4757'
-      : patient.status === 'warning'
-      ? '#ffb800'
-      : '#00e5a0';
+    patient.status === 'critical' ? '#ff4757'
+    : patient.status === 'warning' ? '#ffb800'
+    : '#00e5a0';
 
   const size = isSelected ? 44 : 34;
 
-  return (
-    <AdvancedMarker
-      position={{ lat: patient.location.lat, lng: patient.location.lng }}
-      onClick={() => onSelect(patient)}
-      zIndex={isSelected ? 100 : 1}
-    >
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: '50% 50% 50% 0',
-          transform: 'rotate(-45deg)',
-          background: color,
-          border: isSelected ? '3px solid #fff' : '2px solid rgba(255,255,255,0.4)',
-          boxShadow: isSelected
-            ? `0 0 0 4px ${color}40, 0 4px 16px ${color}80`
-            : `0 2px 8px ${color}60`,
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <span
-          style={{
-            transform: 'rotate(45deg)',
-            fontSize: isSelected ? 14 : 11,
-            fontWeight: 700,
-            color: '#fff',
-            fontFamily: 'JetBrains Mono, monospace',
-            textShadow: '0 1px 2px rgba(0,0,0,0.4)',
-          }}
-        >
-          {patient.id.replace('P', '')}
-        </span>
-      </div>
-    </AdvancedMarker>
-  );
-}
+  const html = `
+    <div style="
+      width:${size}px;height:${size}px;
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      background:${color};
+      border:${isSelected ? '3px solid #fff' : '2px solid rgba(255,255,255,0.4)'};
+      box-shadow:${isSelected ? `0 0 0 4px ${color}40, 0 4px 16px ${color}80` : `0 2px 8px ${color}60`};
+      display:flex;align-items:center;justify-content:center;
+    ">
+      <span style="
+        transform:rotate(45deg);
+        font-size:${isSelected ? 14 : 11}px;font-weight:700;color:#fff;
+        font-family:'JetBrains Mono',monospace;
+        text-shadow:0 1px 2px rgba(0,0,0,0.4);
+      ">${patient.id.replace('P', '')}</span>
+    </div>`;
 
-// ─── Info Panel on Map ──────────────────────────────────────────────────────
-
-function PatientInfoWindow({
-  patient,
-  onClose,
-}: {
-  patient: Patient;
-  onClose: () => void;
-}) {
-  return (
-    <InfoWindow
-      position={{ lat: patient.location.lat, lng: patient.location.lng }}
-      onCloseClick={onClose}
-      pixelOffset={[0, -40]}
-    >
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', minWidth: 200, padding: '4px 2px' }}>
-        <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, color: '#0c1824' }}>
-          {patient.name}
-        </p>
-        <p style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>
-          {patient.ward} · {patient.bedNumber}
-        </p>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 6,
-            fontSize: 11,
-          }}
-        >
-          <div>
-            <span style={{ color: '#999' }}>HR</span>
-            <br />
-            <strong style={{ color: '#e53e3e' }}>{patient.vitals.heartRate} bpm</strong>
-          </div>
-          <div>
-            <span style={{ color: '#999' }}>Temp</span>
-            <br />
-            <strong style={{ color: '#dd6b20' }}>{patient.vitals.temperature}°C</strong>
-          </div>
-          <div>
-            <span style={{ color: '#999' }}>SBP</span>
-            <br />
-            <strong style={{ color: '#6b46c1' }}>{patient.vitals.systolicBP} mmHg</strong>
-          </div>
-          <div>
-            <span style={{ color: '#999' }}>DBP</span>
-            <br />
-            <strong style={{ color: '#6b46c1' }}>{patient.vitals.diastolicBP} mmHg</strong>
-          </div>
-        </div>
-        <p style={{ fontSize: 10, color: '#aaa', marginTop: 6 }}>
-          Updated {timeAgo(patient.vitals.timestamp)}
-        </p>
-      </div>
-    </InfoWindow>
-  );
+  return L.divIcon({
+    className: '',
+    html,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size], // tip of the diamond points at the location
+  });
 }
 
 // ─── Map Component ──────────────────────────────────────────────────────────
@@ -146,9 +61,7 @@ function PatientMap({
   const handleSelect = useCallback(
     (p: Patient) => {
       onSelect(p);
-      if (map) {
-        map.panTo({ lat: p.location.lat, lng: p.location.lng });
-      }
+      map.panTo([p.location.lat, p.location.lng]);
     },
     [map, onSelect]
   );
@@ -156,48 +69,29 @@ function PatientMap({
   return (
     <>
       {patients.map((p) => (
-        <PatientMarker
+        <Marker
           key={p.id}
-          patient={p}
-          isSelected={selected?.id === p.id}
-          onSelect={handleSelect}
-        />
+          position={[p.location.lat, p.location.lng]}
+          icon={buildPatientIcon(p, selected?.id === p.id)}
+          eventHandlers={{ click: () => handleSelect(p) }}
+          zIndexOffset={selected?.id === p.id ? 1000 : 0}
+        >
+          <Popup>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', minWidth: 180 }}>
+              <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, color: '#0c1824' }}>{p.name}</p>
+              <p style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>{p.bedNumber}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
+                <div><span style={{ color: '#999' }}>HR</span><br /><strong style={{ color: '#e53e3e' }}>{p.vitals.heartRate} bpm</strong></div>
+                <div><span style={{ color: '#999' }}>Temp</span><br /><strong style={{ color: '#dd6b20' }}>{p.vitals.temperature}°C</strong></div>
+                <div><span style={{ color: '#999' }}>SBP</span><br /><strong style={{ color: '#6b46c1' }}>{p.vitals.systolicBP} mmHg</strong></div>
+                <div><span style={{ color: '#999' }}>DBP</span><br /><strong style={{ color: '#6b46c1' }}>{p.vitals.diastolicBP} mmHg</strong></div>
+              </div>
+              <p style={{ fontSize: 10, color: '#aaa', marginTop: 6 }}>Updated {timeAgo(p.vitals.timestamp)}</p>
+            </div>
+          </Popup>
+        </Marker>
       ))}
-      {selected && (
-        <PatientInfoWindow
-          patient={selected}
-          onClose={() => onSelect(selected)}
-        />
-      )}
     </>
-  );
-}
-
-// ─── No Key Placeholder ─────────────────────────────────────────────────────
-
-function NoKeyPlaceholder() {
-  return (
-    <div className="relative w-full bg-bg-base border border-border rounded-xl overflow-hidden flex flex-col items-center justify-center gap-4 text-center"
-      style={{ minHeight: 400 }}>
-      <div className="w-14 h-14 rounded-full bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center">
-        <Settings2 size={24} className="text-accent-cyan" />
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-text-primary mb-1">Google Maps API Key Required</p>
-        <p className="text-xs text-text-muted max-w-xs">
-          Go to <span className="text-accent-cyan font-mono">Settings → IoT Connectivity</span> and
-          paste your Google Maps API key to enable the live tracking map.
-        </p>
-      </div>
-      <a
-        href="https://console.cloud.google.com/google/maps-apis"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs font-mono text-accent-cyan border border-accent-cyan/30 px-4 py-1.5 rounded-lg hover:bg-accent-cyan/10 transition-colors"
-      >
-        Get a free API key →
-      </a>
-    </div>
   );
 }
 
@@ -206,18 +100,12 @@ function NoKeyPlaceholder() {
 export default function GPSTracker() {
   const { patients, isLive } = usePatients();
   const [selected, setSelected] = useState<Patient | null>(null);
-  const [wardFilter, setWardFilter] = useState<string>('All');
 
-  const apiKey = GOOGLE_MAPS_API_KEY;
-  const wards = ['All', ...Array.from(new Set(patients.map((p) => p.ward)))];
-  const filtered = wardFilter === 'All' ? patients : patients.filter((p) => p.ward === wardFilter);
+  const filtered = patients;
 
-  const handleSelect = useCallback(
-    (p: Patient) => {
-      setSelected((prev) => (prev?.id === p.id ? null : p));
-    },
-    []
-  );
+  const handleSelect = useCallback((p: Patient) => {
+    setSelected((prev) => (prev?.id === p.id ? null : p));
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -239,56 +127,30 @@ export default function GPSTracker() {
         ))}
       </div>
 
-      {/* Ward filter */}
-      <div className="flex gap-1 overflow-x-auto">
-        {wards.map((w) => (
-          <button
-            key={w}
-            onClick={() => setWardFilter(w)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all ${
-              wardFilter === w
-                ? 'bg-accent-cyan/10 border-accent-cyan/30 text-accent-cyan'
-                : 'border-border text-text-muted hover:text-text-primary'
-            }`}
-          >
-            {w}
-          </button>
-        ))}
-      </div>
-
       {/* Main layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Google Map */}
-        <div className="lg:col-span-2 rounded-xl overflow-hidden border border-border" style={{ minHeight: 460 }}>
-          {!apiKey ? (
-            <NoKeyPlaceholder />
-          ) : (
-            <APIProvider apiKey={apiKey}>
-              <Map
-                defaultCenter={MAP_CENTER}
-                defaultZoom={15}
-                mapId="vitalsync-map"
-                style={{ width: '100%', height: '100%', minHeight: 460 }}
-                gestureHandling="greedy"
-                disableDefaultUI={false}
-                mapTypeControl={false}
-                streetViewControl={false}
-                fullscreenControl={false}
-              >
-                <PatientMap patients={filtered} selected={selected} onSelect={handleSelect} />
-              </Map>
-            </APIProvider>
-          )}
+        {/* Map */}
+        <div className="relative lg:col-span-2 rounded-xl overflow-hidden border border-border" style={{ minHeight: 460 }}>
+          <MapContainer
+            center={MAP_CENTER}
+            zoom={15}
+            scrollWheelZoom
+            style={{ width: '100%', height: '100%', minHeight: 460 }}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <PatientMap patients={filtered} selected={selected} onSelect={handleSelect} />
+          </MapContainer>
 
           {/* Live badge overlay */}
-          {apiKey && (
-            <div className="absolute top-3 left-3 pointer-events-none">
-              <div className="flex items-center gap-1.5 bg-bg-elevated/90 border border-border rounded-lg px-2 py-1 text-[10px] font-mono text-status-stable backdrop-blur-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-status-stable vital-pulse" />
-                {isLive ? 'LIVE TRACKING' : 'SIMULATED'}
-              </div>
+          <div className="absolute top-3 left-3 pointer-events-none z-[1000]">
+            <div className="flex items-center gap-1.5 bg-bg-elevated/90 border border-border rounded-lg px-2 py-1 text-[10px] font-mono text-status-stable backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-status-stable vital-pulse" />
+              {isLive ? 'LIVE TRACKING' : 'SIMULATED'}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Patient list panel */}
@@ -326,7 +188,7 @@ export default function GPSTracker() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-text-primary truncate">{p.name}</p>
                     <p className="text-[10px] font-mono text-text-muted">
-                      {p.ward} · {p.bedNumber}
+                      {p.bedNumber}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -376,7 +238,7 @@ export default function GPSTracker() {
                 </span>
               </div>
               <p className="text-xs text-text-muted font-mono">
-                {selected.ward} · {selected.bedNumber} · {selected.diagnosis}
+                {selected.bedNumber} · {selected.diagnosis}
               </p>
               <p className="text-xs text-text-muted font-mono mt-1">
                 Last update: {timeAgo(selected.vitals.timestamp)}
