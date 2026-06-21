@@ -62,7 +62,7 @@ export const alerts: Alert[] = [
     acknowledged: true,
   },
   {
-    id: 'A008',
+    id: 'A008' ,
     patientId: 'P007',
     patientName: 'Taiwo Afolabi',
     type: 'temperature',
