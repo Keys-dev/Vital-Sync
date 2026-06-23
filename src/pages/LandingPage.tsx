@@ -120,6 +120,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 export default function LandingPage() {
   const navigate  = useNavigate();
   const ctaRef    = useRef<HTMLDivElement>(null);
+  const ctaRef1    = useRef<HTMLDivElement>(null);
 
   return (
     <div className="min-h-screen bg-bg-base overflow-x-hidden">
@@ -187,7 +188,7 @@ export default function LandingPage() {
               Get started <ArrowRight size={15} />
             </button>
             <button
-              onClick={() => ctaRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => ctaRef1.current?.scrollIntoView({ behavior: 'smooth' })}
               className="inline-flex items-center justify-center gap-2 bg-bg-surface border
                 border-border text-text-secondary font-semibold text-sm px-7 py-3 rounded-xl
                 hover:border-accent-cyan/40 transition-all"
@@ -209,7 +210,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Features ── */}
-      <section ref={ctaRef}
+      <section ref={ctaRef1}
       className="max-w-5xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
           <p className="text-[11px] font-mono text-accent-cyan uppercase tracking-widest mb-3">
@@ -261,7 +262,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA / Sign-in section ── */}
-      <section 
+      <section ref={ctaRef}
         className="bg-bg-surface border-t border-border px-6 py-20">
         <div className="max-w-2xl mx-auto text-center mb-10">
           <p className="text-[11px] font-mono text-accent-cyan uppercase tracking-widest mb-3">
