@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { Activity, Activity as MonitorIcon, LogOut } from 'lucide-react';
+import CriticalAlertBanner from '@/components/CriticalAlertBanner';
 
 export default function FamilyLayout() {
   const { signOut }  = useAuthContext();
@@ -102,6 +103,9 @@ export default function FamilyLayout() {
             </button>
           </div>
         </header>
+
+        {/* Alert banner — appears on all family pages when alerts fire */}
+        <CriticalAlertBanner />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 animate-fade-up pb-24 md:pb-6">

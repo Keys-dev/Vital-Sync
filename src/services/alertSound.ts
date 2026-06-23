@@ -67,12 +67,11 @@ export async function playInfoAlert() {
   try {
     const ctx = getCtx();
     if (ctx.state === 'suspended') await ctx.resume();
-    beep(ctx, 520, 0.12, 0.12); // soft, short, low gain
+    beep(ctx, 520, 0.12, 0.12);
   } catch (err) {
     console.warn('[alertSound] Could not play sound:', err);
   }
 }
-
 
 // ─── Priority sound queue ─────────────────────────────────────────────────
 // Plays pending alert sounds in sequence (critical → warning → info)
@@ -87,7 +86,6 @@ async function drainQueue() {
   if (isPlaying || queue.length === 0) return;
   isPlaying = true;
 
-  // Sort so critical always plays first
   queue.sort((a, b) => {
     const order = { critical: 0, warning: 1, info: 2 };
     return order[a.severity] - order[b.severity];
@@ -96,7 +94,7 @@ async function drainQueue() {
   while (queue.length > 0) {
     const next = queue.shift()!;
     await next.fn();
-    await new Promise((r) => setTimeout(r, 400)); // gap between sounds
+    await new Promise((r) => setTimeout(r, 400));
   }
 
   isPlaying = false;
@@ -108,6 +106,32 @@ export function queueAlert(severity: 'critical' | 'warning' | 'info') {
     : severity === 'warning' ? playWarningAlert
     : playInfoAlert;
 
-  queue.push({ severity, fn });
-  drainQueue();
+    vibrateAlert(severity); // haptic fires immediately, no need to queue
+    queue.push({ severity, fn });
+    drainQueue();
+
+}
+
+
+// ─── Haptic vibration (mobile web only) ──────────────────────────────────
+// navigator.vibrate is supported on Android Chrome/Firefox.
+// iOS Safari does not support it — the call is safely ignored.
+
+export function vibrateAlert(severity: 'critical' | 'warning' | 'info') {
+  if (!navigator.vibrate) return;
+
+  switch (severity) {
+    case 'critical':
+      // Long-short-long — urgent, hard to ignore
+      navigator.vibrate([300, 100, 300, 100, 300]);
+      break;
+    case 'warning':
+      // Two medium pulses
+      navigator.vibrate([200, 100, 200]);
+      break;
+    case 'info':
+      // Single short tap
+      navigator.vibrate(100);
+      break;
+  }
 }

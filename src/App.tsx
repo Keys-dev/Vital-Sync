@@ -58,9 +58,9 @@ export default function App() {
 
         {/* Family routes */}
         <Route element={<ProtectedRoute requiredRole="family" />}>
-          <Route path="/family" element={<FamilyLayout />}>
-            <Route index                     element={<FamilyDashboard />} />
-            <Route path="patient/:patientId" element={<FamilyPatient />} />
+          <Route element={<AlertsProvider><FamilyLayout /></AlertsProvider>}>
+            <Route path="/family" index element={<FamilyDashboard />} />
+            <Route path="/family/patient/:patientId" element={<FamilyPatient />} />
           </Route>
         </Route>
 
