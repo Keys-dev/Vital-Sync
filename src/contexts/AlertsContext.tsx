@@ -3,14 +3,18 @@
 // Wrap your app with <AlertsProvider> and use useAlertsContext() anywhere.
 
 import {
-  createContext, useContext, useEffect, useState,
+  createContext, useContext, useEffect, useRef, useState,
   useCallback, type ReactNode,
 } from 'react';
 import { supabase } from '@/lib/supabase';
 import { sendBrowserNotification } from '@/services/notifications';
 import type { Alert } from '@/types';
+import { queueAlert } from '@/services/alertSound';
 
-const SETTINGS_KEY = 'vitalsync-settings';
+const SETTINGS_KEY    = 'vitalsync-settings';
+const CRITICAL_REPEAT_INTERVAL = 5_000; // re-alert every 60 s for critical
+const WARNING_REPEAT_INTERVAL  = 5_000; // re-alert every 2 min for warning
+const INFO_REPEAT_INTERVAL  = 5_000; // re-alert every 2 min for warning
 
 function getAlertsEnabled(): boolean {
   try {
@@ -44,7 +48,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts,        setAlerts]        = useState<Alert[]>([]);
   const [alertsEnabled, setAlertsEnabled] = useState(getAlertsEnabled);
 
-  // Sync alertsEnabled with localStorage (Settings page writes here)
+  // Track which alert ids we've already sounded to avoid re-firing on re-render
+  const soundedIds = useRef<Set<string>>(new Set());
+
+  // ── Sync alertsEnabled with localStorage (Settings page writes here) ──
   useEffect(() => {
     const interval = setInterval(() => setAlertsEnabled(getAlertsEnabled()), 2000);
     const onStorage = () => setAlertsEnabled(getAlertsEnabled());
@@ -55,9 +62,31 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Single realtime subscription — created once when the provider mounts
+  // ── Repeat reminder: re-sound every 60 s while critical unack'd alerts exist ──
   useEffect(() => {
-    // Initial fetch
+  const timer = setInterval(() => {
+    if (!getAlertsEnabled()) return;
+
+    const hasUnackCritical = alerts.some(
+      (a) => a.severity === 'critical' && !a.acknowledged,
+    );
+    const hasUnackWarning = alerts.some(
+      (a) => a.severity === 'warning' && !a.acknowledged,
+    );
+    // const hasUnackInfo = alerts.some(
+    //   (a) => a.severity === 'info' && !a.acknowledged,
+    // );
+
+    if (hasUnackCritical) queueAlert('critical');
+    if (hasUnackWarning)  queueAlert('warning');
+    // else if (hasUnackInfo)    playInfoAlert();
+  }, Math.min(CRITICAL_REPEAT_INTERVAL, WARNING_REPEAT_INTERVAL, INFO_REPEAT_INTERVAL));
+
+  return () => clearInterval(timer);
+}, [alerts]);
+
+  // ── Single realtime subscription ──────────────────────────────────────
+  useEffect(() => {
     supabase
       .from('alerts')
       .select('*')
@@ -76,12 +105,20 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         (payload) => {
           const alert = payload.new as Alert;
           setAlerts((prev) => [alert, ...prev]);
-          if (getAlertsEnabled()) {
-            sendBrowserNotification(
-              alert.message,
-              `Patient: ${alert.patientName} · ${alert.value}`,
-              alert.severity,
-            );
+
+          if (!getAlertsEnabled()) return;
+
+          // Browser notification
+          sendBrowserNotification(
+            alert.message,
+            `Patient: ${alert.patientName} · ${alert.value}`,
+            alert.severity,
+          );
+
+          // In-app sound — play once per unique alert id
+          if (!soundedIds.current.has(alert.id)) {
+            soundedIds.current.add(alert.id);
+            queueAlert(alert.severity);
           }
         },
       )

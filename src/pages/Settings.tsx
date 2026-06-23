@@ -3,6 +3,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { User, Wifi, Bell, Thermometer, RefreshCw, Shield, Save, ChevronRight } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
+import AlertTestPanel from '@/components/AlertTestPanel';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -189,6 +190,9 @@ export default function Settings() {
           <ChevronRight size={14} />
         </div>
       </Section>
+
+      {/* ── Alert Test Panel (dev only) ───────────────────────────────── */}
+      <AlertTestPanel />
 
       {/* ── Save button ───────────────────────────────────────────────────── */}
       <div className="flex justify-end pb-6">
