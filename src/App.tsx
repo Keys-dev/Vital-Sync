@@ -10,6 +10,7 @@ import HealthTrends from '@/pages/HealthTrends';
 import Alerts       from '@/pages/Alerts';
 import GPSTracker   from '@/pages/GPSTracker';
 import Settings     from '@/pages/Settings';
+import LandingPage  from '@/pages/LandingPage';
 
 import AccessRequests from '@/pages/doctor/AccessRequests';
 import PatientVitals  from '@/pages/doctor/PatientVitals';
@@ -29,7 +30,7 @@ export default function App() {
           <Route path="/auth" element={<AuthPage />} />
         </Route>
 
-        <Route path="/" element={<Navigate to="/auth" replace />} />
+        <Route path="/" element={<LandingPage />} />
 
         <Route path="/unauthorized" element={
           <div className="min-h-screen bg-bg-base flex items-center justify-center">
