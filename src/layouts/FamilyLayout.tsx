@@ -3,8 +3,21 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { Activity, Activity as MonitorIcon, LogOut } from 'lucide-react';
 import CriticalAlertBanner from '@/components/CriticalAlertBanner';
+import { AlertsProvider } from '@/contexts/AlertsContext';
+import { useFamilyData } from '@/hooks/useFamilyData';
 
 export default function FamilyLayout() {
+  const { approvedPatients } = useFamilyData();
+  const patientIds = approvedPatients.map((p) => p.patient_id);
+
+  return (
+    <AlertsProvider patientIds={patientIds}>
+      <FamilyLayoutInner />
+    </AlertsProvider>
+  );
+}
+
+function FamilyLayoutInner() {
   const { signOut }  = useAuthContext();
   const { profile }  = useProfile();
   const navigate     = useNavigate();

@@ -8,13 +8,11 @@ import {
 } from 'react';
 import { supabase } from '@/lib/supabase';
 import { sendBrowserNotification } from '@/services/notifications';
+import { playCriticalAlert, playWarningAlert } from '@/services/alertSound';
 import type { Alert } from '@/types';
-import { queueAlert } from '@/services/alertSound';
 
 const SETTINGS_KEY    = 'vitalsync-settings';
-const CRITICAL_REPEAT_INTERVAL = 5_000; // re-alert every 60 s for critical
-const WARNING_REPEAT_INTERVAL  = 5_000; // re-alert every 2 min for warning
-const INFO_REPEAT_INTERVAL  = 5_000; // re-alert every 2 min for warning
+const REPEAT_INTERVAL = 60_000; // re-alert every 60 s while critical unacknowledged
 
 function getAlertsEnabled(): boolean {
   try {
@@ -44,7 +42,7 @@ const AlertsContext = createContext<AlertsContextValue>({
   acknowledgeAll: async () => {},
 });
 
-export function AlertsProvider({ children }: { children: ReactNode }) {
+export function AlertsProvider({ children, patientIds }: { children: ReactNode; patientIds?: string[] }) {
   const [alerts,        setAlerts]        = useState<Alert[]>([]);
   const [alertsEnabled, setAlertsEnabled] = useState(getAlertsEnabled);
 
@@ -64,26 +62,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   // ── Repeat reminder: re-sound every 60 s while critical unack'd alerts exist ──
   useEffect(() => {
-  const timer = setInterval(() => {
-    if (!getAlertsEnabled()) return;
-
-    const hasUnackCritical = alerts.some(
-      (a) => a.severity === 'critical' && !a.acknowledged,
-    );
-    const hasUnackWarning = alerts.some(
-      (a) => a.severity === 'warning' && !a.acknowledged,
-    );
-    // const hasUnackInfo = alerts.some(
-    //   (a) => a.severity === 'info' && !a.acknowledged,
-    // );
-
-    if (hasUnackCritical) queueAlert('critical');
-    if (hasUnackWarning)  queueAlert('warning');
-    // else if (hasUnackInfo)    playInfoAlert();
-  }, Math.min(CRITICAL_REPEAT_INTERVAL, WARNING_REPEAT_INTERVAL, INFO_REPEAT_INTERVAL));
-
-  return () => clearInterval(timer);
-}, [alerts]);
+    const timer = setInterval(() => {
+      if (!getAlertsEnabled()) return;
+      const hasUnackCritical = alerts.some(
+        (a) => a.severity === 'critical' && !a.acknowledged,
+      );
+      if (hasUnackCritical) playCriticalAlert();
+    }, REPEAT_INTERVAL);
+    return () => clearInterval(timer);
+  }, [alerts]);
 
   // ── Single realtime subscription ──────────────────────────────────────
   useEffect(() => {
@@ -118,7 +105,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           // In-app sound — play once per unique alert id
           if (!soundedIds.current.has(alert.id)) {
             soundedIds.current.add(alert.id);
-            queueAlert(alert.severity);
+            if (alert.severity === 'critical') playCriticalAlert();
+            else if (alert.severity === 'warning') playWarningAlert();
           }
         },
       )
@@ -158,8 +146,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     setAlerts((prev) => prev.map((a) => ({ ...a, acknowledged: true })));
   }, [alerts]);
 
-  const unacknowledged = alertsEnabled ? alerts.filter((a) => !a.acknowledged) : [];
-  const critical       = alertsEnabled ? alerts.filter((a) => a.severity === 'critical') : [];
+  const unacknowledged = alertsEnabled
+    ? alerts.filter((a) => !a.acknowledged && (!patientIds || patientIds.includes(a.patientId)))
+    : [];
+  const critical = alertsEnabled
+    ? alerts.filter((a) => a.severity === 'critical' && (!patientIds || patientIds.includes(a.patientId)))
+    : [];
 
   return (
     <AlertsContext.Provider value={{

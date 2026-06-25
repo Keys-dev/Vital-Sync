@@ -1,13 +1,14 @@
 import { useProfile } from '@/hooks/useProfile';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, TrendingUp, Bell, MapPin, Settings, Activity, Wifi, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Bell, MapPin, Settings, Activity, Wifi, UserCheck, Cpu } from 'lucide-react';
 
 const nav = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/patients', icon: Users, label: 'Patients' },
   { to: '/trends', icon: TrendingUp, label: 'Health Trends' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/gps', icon: MapPin, label: 'GPS Tracker' },
+  { to: '/gps',     icon: MapPin, label: 'GPS Tracker' },
+  { to: '/devices', icon: Cpu,    label: 'Devices' },
   { to: '/settings', icon: Settings, label: 'Settings' },
   { to: '/requests', icon: UserCheck, label: 'Access Requests' },
 ];

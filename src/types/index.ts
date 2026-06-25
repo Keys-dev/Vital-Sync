@@ -14,7 +14,6 @@ export interface DBPatient {
   id:                    string;
   full_name:             string;
   date_of_birth:         string;
-  thingspeak_channel_id: string;
 }
 
 export interface VitalsRow {
@@ -123,17 +122,20 @@ export interface TimelineEvent {
 
 // ─── Device / IoT ──────────────────────────────────────────────────────────
 
-export type DeviceStatus = 'online' | 'offline' | 'error';
+export type DeviceStatus = 'online' | 'offline' | 'unassigned';
 
-export interface IoTDevice {
-  id: string;
-  patientId: string;
-  model: string;
-  firmware: string;
-  status: DeviceStatus;
-  batteryLevel: number;
-  lastSeen: string;
-  sensors: string[];
+export interface Device {
+  id:               string;
+  device_code:      string;
+  label:            string;
+  patient_id:       string | null;
+  status:           DeviceStatus;
+  last_seen:        string | null;
+  battery_level:    number | null;
+  firmware_version: string | null;
+  created_at:       string;
+  // joined from patients table (UI convenience)
+  patient_name?:    string;
 }
 
 // ─── Settings ──────────────────────────────────────────────────────────────

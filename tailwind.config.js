@@ -67,4 +67,7 @@ export default {
     },
   },
   plugins: [],
+  safelist: [
+    'grid-cols-[1fr_1fr_120px_100px_80px_auto]',
+  ],
 };

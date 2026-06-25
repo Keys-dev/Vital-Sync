@@ -11,6 +11,7 @@ import Alerts       from '@/pages/Alerts';
 import GPSTracker   from '@/pages/GPSTracker';
 import Settings     from '@/pages/Settings';
 import LandingPage  from '@/pages/LandingPage';
+import Devices      from '@/pages/Devices';
 
 import AccessRequests from '@/pages/doctor/AccessRequests';
 import PatientVitals  from '@/pages/doctor/PatientVitals';
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="trends"                   element={<HealthTrends />} />
             <Route path="alerts"                   element={<Alerts />} />
             <Route path="gps"                      element={<GPSTracker />} />
+            <Route path="devices"                  element={<Devices />} />
             <Route path="settings"                 element={<Settings />} />
             <Route path="requests"                 element={<AccessRequests />} />
             <Route path="patient/:patientId/live"  element={<PatientVitals />} />
@@ -58,9 +60,9 @@ export default function App() {
 
         {/* Family routes */}
         <Route element={<ProtectedRoute requiredRole="family" />}>
-          <Route element={<AlertsProvider><FamilyLayout /></AlertsProvider>}>
-            <Route path="/family" index element={<FamilyDashboard />} />
-            <Route path="/family/patient/:patientId" element={<FamilyPatient />} />
+          <Route path="/family" element={<FamilyLayout />}>
+            <Route index                     element={<FamilyDashboard />} />
+            <Route path="patient/:patientId" element={<FamilyPatient />} />
           </Route>
         </Route>
 

@@ -4,25 +4,30 @@ import { useProfile  } from './useProfile';
 import type { AccessRequest, VitalsRow } from '@/types';
 
 export interface AssignedPatient {
-  id:                    string;
-  full_name:             string;
-  date_of_birth:         string;
-  thingspeak_channel_id: string;
-  latest_vitals:         Partial<VitalsRow> | null;
+  id:                string;
+  full_name:         string;
+  date_of_birth:     string | null;
+  gender:            string | null;
+  blood_type:        string | null;
+  diagnosis:         string | null;
+  bed_number:        string | null;
+  emergency_contact: string | null;
+  latest_vitals:     Partial<VitalsRow> | null;
 }
 
 // ── Hook: assigned patients ────────────────────────────────────────────────────
 export function useAssignedPatients() {
-  const supabase        = useSupabase();
-  const { profile }     = useProfile();
-  const [patients,  setPatients]  = useState<AssignedPatient[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState<string | null>(null);
+  const supabase      = useSupabase();
+  const { profile }   = useProfile();
+  const [patients,  setPatients] = useState<AssignedPatient[]>([]);
+  const [loading,   setLoading]  = useState(true);
+  const [error,     setError]    = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
 
+    // 1. Get patient IDs assigned to this doctor
     const { data: assignments } = await supabase
       .from('doctor_patients')
       .select('patient_id')
@@ -32,25 +37,31 @@ export function useAssignedPatients() {
 
     const ids = assignments.map((a) => a.patient_id);
 
+    // 2. Fetch all patient rows with all columns in one query
     const { data: rows, error: pErr } = await supabase
       .from('patients')
-      .select('id, full_name, date_of_birth, thingspeak_channel_id')
+      .select('id, full_name, date_of_birth, gender, blood_type, diagnosis, bed_number, emergency_contact')
       .in('id', ids);
 
     if (pErr || !rows) { setError(pErr?.message ?? null); setLoading(false); return; }
 
-    const enriched = await Promise.all(
-      rows.map(async (p) => {
-        const { data: vitals } = await supabase
-          .from('vitals_log')
-          .select('heart_rate, spo2, temperature, recorded_at')
-          .eq('patient_id', p.id)
-          .order('recorded_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        return { ...p, latest_vitals: vitals ?? null } as AssignedPatient;
-      })
-    );
+    // 3. Fetch latest vitals for ALL patients in one query (fixes N+1 slowness)
+    const { data: allVitals } = await supabase
+      .from('vitals_log')
+      .select('patient_id, heart_rate, spo2, temperature, latitude, longitude, recorded_at')
+      .in('patient_id', ids)
+      .order('recorded_at', { ascending: false });
+
+    // Pick only the most recent row per patient
+    const latestVitals = new Map<string, Partial<VitalsRow>>();
+    for (const v of allVitals ?? []) {
+      if (!latestVitals.has(v.patient_id)) latestVitals.set(v.patient_id, v);
+    }
+
+    const enriched: AssignedPatient[] = rows.map((p) => ({
+      ...p,
+      latest_vitals: latestVitals.get(p.id) ?? null,
+    }));
 
     setPatients(enriched);
     setLoading(false);
@@ -64,10 +75,10 @@ export function useAssignedPatients() {
 export function useAccessRequests() {
   const supabase      = useSupabase();
   const { profile }   = useProfile();
-  const [requests,  setRequests]  = useState<AccessRequest[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState<string | null>(null);
-  const [updating,  setUpdating]  = useState<string | null>(null);
+  const [requests,  setRequests] = useState<AccessRequest[]>([]);
+  const [loading,   setLoading]  = useState(true);
+  const [error,     setError]    = useState<string | null>(null);
+  const [updating,  setUpdating] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     if (!profile) return;
