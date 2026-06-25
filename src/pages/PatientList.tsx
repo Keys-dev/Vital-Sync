@@ -247,9 +247,9 @@ function PatientModal({ patient, onClose, onEdit, onDischarge }: { patient: Pati
     { label: 'Systolic BP',  key: 'systolicBP'  as const, value: patient.vitals.systolicBP,  unit: 'mmHg' },
     { label: 'Diastolic BP', key: 'diastolicBP' as const, value: patient.vitals.diastolicBP, unit: 'mmHg' },
   ];
-  const typeIcons: Record<string, string> = {
-    admission: '🏥', discharge: '🚪', alert: '⚠️', medication: '💊', checkup: '🩺', procedure: '⚕️',
-  };
+  // const typeIcons: Record<string, string> = {
+  //   admission: '🏥', discharge: '🚪', alert: '⚠️', medication: '💊', checkup: '🩺', procedure: '⚕️',
+  // };
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 p-4 pt-16 overflow-y-auto" onClick={onClose}>
