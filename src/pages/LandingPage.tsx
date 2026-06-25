@@ -165,7 +165,7 @@ export default function LandingPage() {
 
           <h1 className="font-display font-bold text-4xl md:text-5xl text-text-primary
             leading-[1.1] tracking-tight text-balance">
-            Every vital sign,<br />
+            Patient's Vitals,<br />
             <span className="text-accent-cyan">watched continuously.</span>
           </h1>
 
