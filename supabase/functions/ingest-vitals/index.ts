@@ -1,33 +1,26 @@
 // supabase/functions/ingest-vitals/index.ts
+//
+// Accepts GET requests from Arduino hardware with URL query parameters:
+// ?pid=...&systolic=120&diastolic=78&pulse=85&temperature=37.1&latitude=6.5244&longitude=3.3792
+//
+// ─── PID MODE ────────────────────────────────────────────────────────────────
+//
+// MODE A (currently active): pid = PATIENT ID (UUID from your patients table)
+//   → skips device lookup entirely, inserts directly into vitals_log
+//   → simpler, works if the hardware partner hardcodes the patient UUID
+//
+// MODE B (commented out): pid = DEVICE CODE (e.g. "VS-001")
+//   → looks up device in the devices table → gets patient_id from there
+//   → supports device reassignment, auto-registration, battery tracking
+//   → uncomment MODE B blocks and comment MODE A blocks to switch
+//
 // ─────────────────────────────────────────────────────────────────────────────
-// Relay between Arduino hardware and Supabase.
-//
-// Arduino sends POST to this Edge Function URL with:
-// {
-//   "device_code": "VS-001",
-//   "heart_rate": 82,
-//   "temperature": 37.1,
-//   "systolic_bp": 118,
-//   "diastolic_bp": 76,
-//   "latitude": 6.5244,
-//   "longitude": 3.3792,
-//   "battery_level": 91
-// }
-//
-// The function:
-//  1. Validates the secret token so random internet requests are rejected
-//  2. Looks up device_code → patient_id in the devices table
-//  3. Inserts into vitals_log with the correct patient_id
-//  4. Updates device.last_seen + status + battery_level
-//  5. Auto-registers unknown devices as 'unassigned' (self-registration)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-// Set INGEST_SECRET in Supabase → Edge Functions → Secrets
-// Burn the same value into your Arduino firmware
-const INGEST_SECRET     = Deno.env.get('INGEST_WEBHOOK_SECRET') ?? '';
+const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const INGEST_SECRET    = Deno.env.get('INGEST_WEBHOOK_SECRET') ?? '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -39,29 +32,29 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // ── Auth: check shared secret header ───────────────────────────────────
-  const token = req.headers.get('x-secret-token') ?? '';
-  if (INGEST_SECRET && token !== INGEST_SECRET) {
+  // ── Parse URL query parameters ────────────────────────────────────────────
+  const url    = new URL(req.url);
+  const params = url.searchParams;
+
+  const pid         = params.get('pid')?.trim();        // see mode notes above
+  const systolic    = params.get('systolic');
+  const diastolic   = params.get('diastolic');
+  const pulse       = params.get('pulse');              // heart rate
+  const temperature = params.get('temperature');
+  const latitude    = params.get('latitude');
+  const longitude   = params.get('longitude');
+
+  // Optional secret — Arduino can pass as ?secret=... or x-secret-token header
+  const secret = params.get('secret') ?? req.headers.get('x-secret-token') ?? '';
+  if (INGEST_SECRET && secret !== INGEST_SECRET) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  // ── Parse payload ───────────────────────────────────────────────────────
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const device_code = (body.device_code as string | undefined)?.trim();
-  if (!device_code) {
-    return new Response(JSON.stringify({ error: 'device_code is required' }), {
+  if (!pid) {
+    return new Response(JSON.stringify({ error: 'pid is required' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -69,88 +62,117 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE);
 
-  // ── 1. Look up device ───────────────────────────────────────────────────
-  let { data: device, error: deviceErr } = await supabase
-    .from('devices')
-    .select('id, patient_id, status')
-    .eq('device_code', device_code)
+  // ════════════════════════════════════════════════════════════════════════════
+  // MODE A — pid is a PATIENT ID (UUID)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  // Verify the patient actually exists before inserting
+  const { data: patient, error: patientErr } = await supabase
+    .from('patients')
+    .select('id')
+    .eq('id', pid)
     .maybeSingle();
 
-  if (deviceErr) {
-    console.error('[ingest] device lookup error:', deviceErr);
-    return new Response(JSON.stringify({ error: 'Device lookup failed' }), {
+  if (patientErr) {
+    return new Response(JSON.stringify({ error: 'Patient lookup failed' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  // ── 2. Auto-register if unknown ─────────────────────────────────────────
-  if (!device) {
-    const { data: newDevice, error: insertErr } = await supabase
-      .from('devices')
-      .insert({
-        device_code,
-        label:  `Auto-registered: ${device_code}`,
-        status: 'unassigned',
-      })
-      .select('id, patient_id, status')
-      .single();
-
-    if (insertErr) {
-      console.error('[ingest] auto-register error:', insertErr);
-      return new Response(JSON.stringify({ error: 'Device registration failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    device = newDevice;
-    console.log(`[ingest] Auto-registered new device: ${device_code}`);
+  if (!patient) {
+    return new Response(JSON.stringify({ error: `No patient found with id: ${pid}` }), {
+      status: 404,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
-  // ── 3. Update device heartbeat ──────────────────────────────────────────
-  await supabase
-    .from('devices')
-    .update({
-      last_seen:     new Date().toISOString(),
-      status:        device.patient_id ? 'online' : 'unassigned',
-      battery_level: body.battery_level ?? null,
-    })
-    .eq('device_code', device_code);
+  const patientId = pid;
 
-  // ── 4. If unassigned, stop here — no patient to write vitals for ────────
-  if (!device.patient_id) {
-    return new Response(
-      JSON.stringify({ ok: true, status: 'unassigned', message: 'Device not yet assigned to a patient' }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
-  }
+  // ════════════════════════════════════════════════════════════════════════════
+  // MODE B — pid is a DEVICE CODE (e.g. "VS-001")
+  // Uncomment this entire block and comment out MODE A above to switch modes.
+  // ════════════════════════════════════════════════════════════════════════════
 
-  // ── 5. Insert vitals_log row ────────────────────────────────────────────
+  // // Look up device by device_code
+  // let { data: device, error: deviceErr } = await supabase
+  //   .from('devices')
+  //   .select('id, patient_id, status')
+  //   .eq('device_code', pid)
+  //   .maybeSingle();
+  //
+  // if (deviceErr) {
+  //   return new Response(JSON.stringify({ error: 'Device lookup failed' }), {
+  //     status: 500,
+  //     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  //   });
+  // }
+  //
+  // // Auto-register device if it's the first time we've seen this code
+  // if (!device) {
+  //   const { data: newDevice, error: insertErr } = await supabase
+  //     .from('devices')
+  //     .insert({ device_code: pid, label: `Auto-registered: ${pid}`, status: 'unassigned' })
+  //     .select('id, patient_id, status')
+  //     .single();
+  //
+  //   if (insertErr) {
+  //     return new Response(JSON.stringify({ error: 'Device registration failed' }), {
+  //       status: 500,
+  //       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  //     });
+  //   }
+  //
+  //   device = newDevice;
+  //   console.log(`[ingest] Auto-registered new device: ${pid}`);
+  // }
+  //
+  // // Update device last_seen + online status
+  // await supabase
+  //   .from('devices')
+  //   .update({
+  //     last_seen: new Date().toISOString(),
+  //     status:    device.patient_id ? 'online' : 'unassigned',
+  //   })
+  //   .eq('device_code', pid);
+  //
+  // // If device isn't assigned to a patient yet, stop here
+  // if (!device.patient_id) {
+  //   return new Response(
+  //     JSON.stringify({ ok: true, status: 'unassigned', message: 'Device not yet assigned to a patient' }),
+  //     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+  //   );
+  // }
+  //
+  // const patientId = device.patient_id;
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Insert vitals — same for both modes
+  // ════════════════════════════════════════════════════════════════════════════
+
   const { error: vitalsErr } = await supabase
     .from('vitals_log')
     .insert({
-      patient_id:   device.patient_id,
-      device_code,
-      heart_rate:   body.heart_rate   ?? null,
-      temperature:  body.temperature  ?? null,
-      systolic_bp:  body.systolic_bp  ?? null,
-      diastolic_bp: body.diastolic_bp ?? null,
-      latitude:     body.latitude     ?? null,
-      longitude:    body.longitude    ?? null,
+      patient_id:   patientId,
+      device_code:  pid,                                          // audit trail
+      heart_rate:   pulse       ? parseFloat(pulse)       : null,
+      temperature:  temperature ? parseFloat(temperature) : null,
+      systolic_bp:  systolic    ? parseInt(systolic)      : null,
+      diastolic_bp: diastolic   ? parseInt(diastolic)     : null,
+      latitude:     latitude    ? parseFloat(latitude)    : null,
+      longitude:    longitude   ? parseFloat(longitude)   : null,
       recorded_at:  new Date().toISOString(),
     });
 
   if (vitalsErr) {
-    console.error('[ingest] vitals insert error:', vitalsErr);
-    return new Response(JSON.stringify({ error: 'Vitals insert failed' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: 'Vitals insert failed', detail: vitalsErr.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   }
 
   return new Response(
-    JSON.stringify({ ok: true, patient_id: device.patient_id }),
+    JSON.stringify({ ok: true, patient_id: patientId }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   );
 });

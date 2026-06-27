@@ -12,7 +12,7 @@ import { playCriticalAlert, playWarningAlert } from '@/services/alertSound';
 import type { Alert } from '@/types';
 
 const SETTINGS_KEY    = 'vitalsync-settings';
-const REPEAT_INTERVAL = 60_000; // re-alert every 60 s while critical unacknowledged
+const REPEAT_INTERVAL = 5_000;
 
 function getAlertsEnabled(): boolean {
   try {
