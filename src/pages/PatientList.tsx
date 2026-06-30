@@ -7,7 +7,8 @@ import {
 import { usePatients } from '@/hooks/usePatients';
 import { useAssignedPatients } from '@/hooks/useDoctorData';
 import { usePatientManagement, type PatientFormData } from '@/hooks/usePatientManagement';
-import { statusBg, isVitalAbnormal, timeAgo } from '@/services/vitals';
+import { useProfile } from '@/hooks/useProfile';
+import { statusBg, isVitalAbnormal, timeAgo, formatDoctorName } from '@/services/vitals';
 import { getAlertsByPatient, getTimelineByPatient } from '@/data/alerts';
 import type { Patient, PatientGender } from '@/types';
 
@@ -412,6 +413,8 @@ function formAge(dob: string) {
 export default function PatientList() {
   const { patients: dbPatients, loading } = usePatients();
   const { refetch }                       = useAssignedPatients();
+  const { profile }                       = useProfile();
+  const doctorDisplayName = formatDoctorName(profile?.full_name);
 
   // Optimistic state — keyed by temp/real ID
   const [added,    setAdded]    = useState<Patient[]>([]);
@@ -479,13 +482,13 @@ export default function PatientList() {
     bedNumber:        form.bed_number || '—',
     admissionDate:    new Date().toISOString(),
     diagnosis:        form.diagnosis,
-    doctorAssigned:   'Dr. Default',
+    doctorAssigned:   doctorDisplayName,
     status:           'inactive',
     location:         { lat: 6.5244, lng: 3.3792 },
     deviceId:         'DEV-000',
     bloodType:        form.blood_type,
     emergencyContact: form.emergency_contact || 'None',
-    vitals: { heartRate: 0, temperature: 0, systolicBP: 120, diastolicBP: 80, timestamp: new Date().toISOString() },
+    vitals: { heartRate: 0, temperature: 0, systolicBP: 0, diastolicBP: 0, timestamp: new Date().toISOString() },
     vitalHistory: [],
   };
 

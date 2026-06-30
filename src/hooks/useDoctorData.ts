@@ -48,7 +48,7 @@ export function useAssignedPatients() {
     // 3. Fetch latest vitals for ALL patients in one query (fixes N+1 slowness)
     const { data: allVitals } = await supabase
       .from('vitals_log')
-      .select('patient_id, heart_rate, temperature, latitude, longitude, recorded_at')
+      .select('patient_id, heart_rate, systolic_bp, diastolic_bp, temperature, latitude, longitude, recorded_at')
       .in('patient_id', ids)
       .order('recorded_at', { ascending: false });
 

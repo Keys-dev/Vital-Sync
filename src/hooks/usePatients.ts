@@ -1,8 +1,12 @@
 import { useAssignedPatients } from './useDoctorData';
+import { useProfile } from './useProfile';
+import { formatDoctorName } from '@/services/vitals';
 import type { Patient, PatientGender } from '@/types';
 
 export function usePatients() {
   const { patients: assigned, loading, refetch } = useAssignedPatients();
+  const { profile } = useProfile();
+  const doctorDisplayName = formatDoctorName(profile?.full_name);
 
   const isLive = assigned.some(
     (p) =>
@@ -38,7 +42,7 @@ export function usePatients() {
       bedNumber:      p.bed_number        || `Bed ${p.id.slice(-2)}`,
       admissionDate:  new Date().toISOString(),
       diagnosis:      p.diagnosis         || 'Under observation',
-      doctorAssigned: 'Dr. Default',
+      doctorAssigned: doctorDisplayName,
       status,
       location: {
         lat: v?.latitude  ?? 6.5244,
@@ -48,11 +52,11 @@ export function usePatients() {
       bloodType:        p.blood_type        || 'O+',
       emergencyContact: p.emergency_contact || 'None',
       vitals: {
-        heartRate:   v?.heart_rate  ?? 0,
-        temperature: v?.temperature ?? 0,
-        systolicBP:  120,
-        diastolicBP: 80,
-        timestamp:   v?.recorded_at ?? new Date().toISOString(),
+        heartRate:   v?.heart_rate   ?? 0,
+        temperature: v?.temperature  ?? 0,
+        systolicBP:  v?.systolic_bp  ?? 0,
+        diastolicBP: v?.diastolic_bp ?? 0,
+        timestamp:   v?.recorded_at  ?? new Date().toISOString(),
       },
       vitalHistory: [],
     };

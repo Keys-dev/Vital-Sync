@@ -133,8 +133,18 @@ function EditProfileModal({ current, onClose, onSave }: {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Settings() {
-  const { settings, displayProfile, updateSetting } = useSettings();
-  const { updateProfile } = useProfile();
+  const { settings, updateSetting } = useSettings();
+  const { profile, updateProfile } = useProfile();
+
+  const displayName  = profile?.full_name?.trim() || profile?.email || 'Unknown User';
+  const displayEmail = profile?.email ?? '';
+  const displayRole  = profile?.role  ?? 'doctor';
+  const avatarInitials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || '?';
   const { devices } = useDevices();
   const { signOut } = useAuthContext();
   const navigate = useNavigate();
@@ -142,7 +152,11 @@ export default function Settings() {
   const [showEditProfile, setShowEditProfile] = useState(false);
 
   // Device connection status — any device online counts as connected
-  const onlineDevices  = devices.filter((d) => d.status === 'online');
+  const onlineDevices  = devices.filter((d) => {
+    if (d.status !== 'online' || !d.last_seen) return false;
+    const minutesSinceLastSeen = (Date.now() - new Date(d.last_seen).getTime()) / 60000;
+    return minutesSinceLastSeen < 5;
+  });
   const isConnected    = onlineDevices.length > 0;
   const offlineDevices = devices.filter((d) => d.status === 'offline');
 
@@ -158,14 +172,14 @@ export default function Settings() {
       <div className="bg-bg-surface border border-border rounded-2xl p-5">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-xl bg-accent-cyan/10 border border-accent-cyan/30 flex items-center justify-center text-lg font-bold text-accent-cyan font-mono">
-            {displayProfile.avatarInitials}
+            {avatarInitials}
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="font-display font-700 text-base text-text-primary truncate">
-              {displayProfile.name}
+              {displayName}
             </h2>
-            <p className="text-xs text-text-muted font-mono capitalize">{displayProfile.role}</p>
-            <p className="text-xs text-text-muted font-mono truncate">{displayProfile.email}</p>
+            <p className="text-xs text-text-muted font-mono capitalize">{displayRole}</p>
+            <p className="text-xs text-text-muted font-mono truncate">{displayEmail}</p>
           </div>
           <button
             onClick={() => setShowEditProfile(true)}
@@ -298,7 +312,7 @@ export default function Settings() {
       {/* Edit profile modal */}
       {showEditProfile && (
         <EditProfileModal
-          current={{ name: displayProfile.name, email: displayProfile.email }}
+          current={{ name: displayName, email: displayEmail }}
           onClose={() => setShowEditProfile(false)}
           onSave={updateProfile}
         />

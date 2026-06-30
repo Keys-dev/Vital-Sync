@@ -11,7 +11,7 @@ import Alerts       from '@/pages/Alerts';
 import GPSTracker   from '@/pages/GPSTracker';
 import Settings     from '@/pages/Settings';
 import LandingPage  from '@/pages/LandingPage';
-import Devices      from '@/pages/Devices';
+// import Devices      from '@/pages/Devices'; // ⏸ paused for prototype demo — single device/patient hardcoded for now
 
 import AccessRequests from '@/pages/doctor/AccessRequests';
 import PatientVitals  from '@/pages/doctor/PatientVitals';
@@ -51,7 +51,7 @@ export default function App() {
             <Route path="trends"                   element={<HealthTrends />} />
             <Route path="alerts"                   element={<Alerts />} />
             <Route path="gps"                      element={<GPSTracker />} />
-            <Route path="devices"                  element={<Devices />} />
+            {/* <Route path="devices" element={<Devices />} /> ⏸ paused for prototype demo */}
             <Route path="settings"                 element={<Settings />} />
             <Route path="requests"                 element={<AccessRequests />} />
             <Route path="patient/:patientId/live"  element={<PatientVitals />} />

@@ -1,7 +1,8 @@
 import { useProfile } from '@/hooks/useProfile';
 import { useDevices } from '@/hooks/useDevices';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, TrendingUp, Bell, MapPin, Settings, Activity, Wifi, WifiOff, UserCheck, Cpu } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Bell, MapPin, Settings, Activity, Wifi, WifiOff, UserCheck } from 'lucide-react';
+import { formatDoctorName } from '@/services/vitals';
 
 const nav = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -9,7 +10,7 @@ const nav = [
   { to: '/trends',    icon: TrendingUp,      label: 'Health Trends' },
   { to: '/alerts',    icon: Bell,            label: 'Alerts' },
   { to: '/gps',       icon: MapPin,          label: 'GPS Tracker' },
-  { to: '/devices',   icon: Cpu,             label: 'Devices' },
+  // { to: '/devices', icon: Cpu, label: 'Devices' }, // ⏸ paused for prototype demo
   { to: '/settings',  icon: Settings,        label: 'Settings' },
   { to: '/requests',  icon: UserCheck,       label: 'Access Requests' },
 ];
@@ -99,7 +100,7 @@ export default function Sidebar({ alertCount }: SidebarProps) {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-text-primary truncate">
-              {profile?.full_name ?? '…'}
+              {profile?.role === 'doctor' ? formatDoctorName(profile?.full_name) : (profile?.full_name ?? '…')}
             </p>
             <p className="text-[10px] text-text-muted truncate capitalize">
               {profile?.role ?? ''}

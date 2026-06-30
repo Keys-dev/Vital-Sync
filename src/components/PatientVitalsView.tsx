@@ -2,6 +2,7 @@ import VitalsChart         from './VitalsChart';
 import LiveMap             from './LiveMap';
 import { usePatientVitals } from '@/hooks/usePatientVital';
 import { useProfile } from '@/hooks/useProfile';
+import { formatDoctorName } from '@/services/vitals';
 import { Activity, AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -34,7 +35,7 @@ export default function PatientVitalsView({
   const meta = STATUS_META[status];
 
   // Doctor name comes from the logged-in profile
-  const doctorName = profile?.full_name ?? null;
+  const doctorName = profile?.full_name ? formatDoctorName(profile.full_name) : null;
 
   const hasAlerts = latest != null && (
     (latest.heart_rate  != null && (latest.heart_rate  > 100 || latest.heart_rate  < 50)) ||

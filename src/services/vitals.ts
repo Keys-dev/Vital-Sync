@@ -134,3 +134,14 @@ export function computeSpeedKmh(
   const distanceKm = haversineDistanceKm(prev, curr);
   return distanceKm / dtHours;
 }
+/**
+ * Formats a doctor's registered full name into a display title.
+ * e.g. "Agbaje Muhammed" → "Dr Agbaje"
+ * Falls back gracefully if the name is empty.
+ */
+export function formatDoctorName(fullName: string | null | undefined): string {
+  const trimmed = fullName?.trim();
+  if (!trimmed) return 'Dr —';
+  const firstWord = trimmed.split(' ')[0];
+  return `Dr ${firstWord}`;
+}
