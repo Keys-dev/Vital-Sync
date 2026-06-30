@@ -13,7 +13,6 @@ export interface PatientFormData {
 }
 
 function friendlyError(message: string): string {
-  // Only catch the specific unique constraint violation, not any mention of bed_number
   if (message.includes('patients_bed_number_unique')) {
     return 'That bed is already occupied. Please assign a different bed number.';
   }
@@ -25,7 +24,7 @@ const HOME = 'home';
 async function isBedTaken(bedNumber: string, excludePatientId?: string): Promise<boolean> {
   const trimmed = bedNumber.trim();
   if (!trimmed) return false;
-  if (trimmed.toLowerCase() === HOME) return false; // Home is not exclusive
+  if (trimmed.toLowerCase() === HOME) return false; // Home is non-exclusive
 
   let query = supabase
     .from('patients')
@@ -44,68 +43,61 @@ async function isBedTaken(bedNumber: string, excludePatientId?: string): Promise
 export function usePatientManagement(onSuccess?: () => void) {
   const { profile } = useProfile();
 
-  // REPLACE the entire addPatient callback with:
-const addPatient = useCallback(async (form: PatientFormData): Promise<string> => {
-  if (!profile) throw new Error('Not authenticated');
+  const addPatient = useCallback(async (form: PatientFormData): Promise<string> => {
+    if (!profile) throw new Error('Not authenticated');
 
-  const trimmedBed = form.bed_number.trim();
-  const isHome     = trimmedBed.toLowerCase() === HOME;
+    const trimmedBed = form.bed_number.trim();
+    const isHome     = trimmedBed.toLowerCase() === HOME;
 
-  // Home is non-exclusive — skip uniqueness check.
-  if (trimmedBed && !isHome) {
-    const taken = await isBedTaken(trimmedBed);
-    if (taken) throw new Error('That bed is already occupied. Please assign a different bed number.');
-  }
+    if (trimmedBed && !isHome) {
+      const taken = await isBedTaken(trimmedBed);
+      if (taken) throw new Error('That bed is already occupied. Please assign a different bed number.');
+    }
 
-  const { data: patient, error: insertErr } = await supabase
-    .from('patients')
-    .insert({
-      full_name:         form.full_name.trim(),
-      date_of_birth:     form.date_of_birth || null,
-      gender:            form.gender,
-      blood_type:        form.blood_type,
-      diagnosis:         form.diagnosis.trim(),
-      // Store Home patients as NULL so any DB UNIQUE constraint is never hit.
-      bed_number:        isHome ? null : (trimmedBed || null),
-      emergency_contact: form.emergency_contact.trim(),
-    })
-    .select('id')
-    .single();
-
-  if (insertErr) throw new Error(friendlyError(insertErr.message));
-
-  const { error: linkErr } = await supabase
-    .from('doctor_patients')
-    .insert({ doctor_id: profile.id, patient_id: patient.id });
-
-  if (linkErr) throw new Error(linkErr.message);
-
-  onSuccess?.();
-  return patient.id;            
-}, [profile, onSuccess]);
-
-  const editPatient = useCallback(async (patientId: string, form: PatientFormData) => {
-    // Inside editPatient, replace the two lines that build bed_number:
-const trimmedBed = form.bed_number.trim();
-const isHome     = trimmedBed.toLowerCase() === HOME;
-
-if (trimmedBed && !isHome) {
-  const taken = await isBedTaken(trimmedBed, patientId);
-  if (taken) throw new Error('That bed is already occupied. Please assign a different bed number.');
-}
-
-// In the .update() call:
-bed_number: isHome ? null : (trimmedBed || null)
-
-    const { error } = await supabase
+    const { data: patient, error: insertErr } = await supabase
       .from('patients')
-      .update({
+      .insert({
         full_name:         form.full_name.trim(),
         date_of_birth:     form.date_of_birth || null,
         gender:            form.gender,
         blood_type:        form.blood_type,
         diagnosis:         form.diagnosis.trim(),
-        bed_number:        form.bed_number.trim() || null,
+        bed_number:        isHome ? null : (trimmedBed || null),
+        emergency_contact: form.emergency_contact.trim(),
+      })
+      .select('id')
+      .single();
+
+    if (insertErr) throw new Error(friendlyError(insertErr.message));
+
+    const { error: linkErr } = await supabase
+      .from('doctor_patients')
+      .insert({ doctor_id: profile.id, patient_id: patient.id });
+
+    if (linkErr) throw new Error(linkErr.message);
+
+    onSuccess?.();
+    return patient.id;
+  }, [profile, onSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const editPatient = useCallback(async (patientId: string, form: PatientFormData) => {
+    const trimmedBed = form.bed_number.trim();
+    const isHome     = trimmedBed.toLowerCase() === HOME;
+
+    if (trimmedBed && !isHome) {
+      const taken = await isBedTaken(trimmedBed, patientId);
+      if (taken) throw new Error('That bed is already occupied. Please assign a different bed number.');
+    }
+
+    const { error } = await supabase
+      .from('patients')
+      .update({
+        full_name:         form.full_name.trim(),
+        // date_of_birth intentionally NOT updated — cannot be changed after admission
+        gender:            form.gender,
+        blood_type:        form.blood_type,
+        diagnosis:         form.diagnosis.trim(),
+        bed_number:        isHome ? null : (trimmedBed || null),
         emergency_contact: form.emergency_contact.trim(),
       })
       .eq('id', patientId);

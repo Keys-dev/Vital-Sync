@@ -1,26 +1,39 @@
 import { useProfile } from '@/hooks/useProfile';
+import { useDevices } from '@/hooks/useDevices';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, TrendingUp, Bell, MapPin, Settings, Activity, Wifi, UserCheck, Cpu } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Bell, MapPin, Settings, Activity, Wifi, WifiOff, UserCheck, Cpu } from 'lucide-react';
 
 const nav = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/patients', icon: Users, label: 'Patients' },
-  { to: '/trends', icon: TrendingUp, label: 'Health Trends' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/gps',     icon: MapPin, label: 'GPS Tracker' },
-  { to: '/devices', icon: Cpu,    label: 'Devices' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-  { to: '/requests', icon: UserCheck, label: 'Access Requests' },
+  { to: '/patients',  icon: Users,           label: 'Patients' },
+  { to: '/trends',    icon: TrendingUp,      label: 'Health Trends' },
+  { to: '/alerts',    icon: Bell,            label: 'Alerts' },
+  { to: '/gps',       icon: MapPin,          label: 'GPS Tracker' },
+  { to: '/devices',   icon: Cpu,             label: 'Devices' },
+  { to: '/settings',  icon: Settings,        label: 'Settings' },
+  { to: '/requests',  icon: UserCheck,       label: 'Access Requests' },
 ];
 
 interface SidebarProps {
   alertCount: number;
-  isLive: boolean;
+  isLive: boolean; // kept for API compatibility with Layout.tsx
 }
 
-export default function Sidebar({ alertCount, isLive }: SidebarProps) {
-  const { profile } = useProfile();
-  const location = useLocation();
+export default function Sidebar({ alertCount }: SidebarProps) {
+  const { profile }  = useProfile();
+  const { devices }  = useDevices();
+  const location     = useLocation();
+
+  const onlineCount  = devices.filter((d) => d.status === 'online').length;
+  const isConnected  = onlineCount > 0;
+
+  const initials = profile?.full_name
+    ?.trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') ?? '?';
 
   return (
     <aside className="hidden md:flex flex-col w-60 bg-bg-surface border-r border-border h-screen sticky top-0 z-30">
@@ -37,12 +50,13 @@ export default function Sidebar({ alertCount, isLive }: SidebarProps) {
         </div>
       </div>
 
-      {/* Live indicator */}
+      {/* Device connection status */}
       <div className="px-5 py-3 border-b border-border">
-        <div className={`flex items-center gap-2 text-xs font-mono ${isLive ? 'text-status-stable' : 'text-status-inactive'}`}>
-          <Wifi size={12} />
-          <span>{isLive ? 'LIVE · MQTT' : 'CONNECTING...'}</span>
-          {isLive && <span className="w-1.5 h-1.5 rounded-full bg-status-stable vital-pulse ml-auto" />}
+        <div className={`flex items-center gap-2 text-xs font-mono ${isConnected ? 'text-status-stable' : 'text-status-inactive'}`}>
+          {isConnected
+            ? <><Wifi size={12} /><span>DEVICE ONLINE · {onlineCount}</span><span className="w-1.5 h-1.5 rounded-full bg-status-stable vital-pulse ml-auto" /></>
+            : <><WifiOff size={12} /><span>{devices.length === 0 ? 'NO DEVICES' : 'DEVICE OFFLINE'}</span></>
+          }
         </div>
       </div>
 
@@ -77,11 +91,11 @@ export default function Sidebar({ alertCount, isLive }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
+      {/* Footer — real doctor name */}
       <div className="px-5 py-4 border-t border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center text-xs font-bold text-accent-cyan font-mono">
-            FB
+            {initials}
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-text-primary truncate">

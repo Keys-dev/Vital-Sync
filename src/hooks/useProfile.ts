@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuthContext }              from '@/contexts/AuthContext';
 import { supabase }                   from '@/lib/supabase';
 
@@ -17,17 +17,18 @@ interface UseProfileReturn {
   loading:        boolean;
   error:          string | null;
   refetchProfile: () => Promise<void>;
+  updateProfile:  (data: { full_name?: string; email?: string }) => Promise<void>;
 }
 
 export function useProfile(): UseProfileReturn {
   const { user, loading: authLoading } = useAuthContext();
 
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true); // stay true until we know for sure
+  const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const fetchedForId = useRef<string | null>(null);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     setLoading(true);
     setError(null);
 
@@ -41,26 +42,43 @@ export function useProfile(): UseProfileReturn {
     else         setProfile(data);
 
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
-    // Still waiting for auth to initialise — stay in loading state
     if (authLoading) return;
-
-    // Auth resolved: no user logged in
     if (!user) {
       setProfile(null);
       setLoading(false);
       fetchedForId.current = null;
       return;
     }
-
-    // User is logged in — fetch profile if we haven't already for this user
     if (fetchedForId.current !== user.id) {
       fetchedForId.current = user.id;
       fetchProfile(user.id);
     }
-  }, [user?.id, authLoading]);
+  }, [user?.id, authLoading, fetchProfile]);
 
-  return { profile, loading, error, refetchProfile: () => fetchProfile(user!.id) };
+  const updateProfile = useCallback(async (data: { full_name?: string; email?: string }) => {
+    if (!user) throw new Error('Not authenticated');
+
+    // Update profiles table
+    if (data.full_name !== undefined) {
+      const { error: pErr } = await supabase
+        .from('profiles')
+        .update({ full_name: data.full_name.trim() })
+        .eq('id', user.id);
+      if (pErr) throw new Error(pErr.message);
+    }
+
+    // Update auth email if changed
+    if (data.email !== undefined && data.email !== profile?.email) {
+      const { error: eErr } = await supabase.auth.updateUser({ email: data.email.trim() });
+      if (eErr) throw new Error(eErr.message);
+    }
+
+    // Refresh local state
+    await fetchProfile(user.id);
+  }, [user, profile?.email, fetchProfile]);
+
+  return { profile, loading, error, refetchProfile: () => fetchProfile(user!.id), updateProfile };
 }

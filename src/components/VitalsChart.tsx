@@ -5,7 +5,7 @@ import {
 import type { VitalsRow } from '@/types';
 
 interface ChartConfig {
-  key:       keyof Pick<VitalsRow, 'heart_rate' | 'spo2' | 'temperature'>;
+  key:       keyof Pick<VitalsRow, 'heart_rate' | 'temperature' | 'systolic_bp' | 'diastolic_bp'>;
   label:     string;
   unit:      string;
   stroke:    string;
@@ -15,16 +15,18 @@ interface ChartConfig {
 }
 
 const CHARTS: ChartConfig[] = [
-  { key: 'heart_rate',  label: 'Heart Rate',  unit: 'bpm', stroke: '#d9293d', domain: [30, 150],  warnLow: 50,  warnHigh: 100 },
-  { key: 'spo2',        label: 'SpO₂',        unit: '%',   stroke: '#0086a8', domain: [85, 100],  warnLow: 94                  },
-  { key: 'temperature', label: 'Temperature', unit: '°C',  stroke: '#b87800', domain: [33, 42],   warnLow: 35,  warnHigh: 38.5 },
+  { key: 'heart_rate',   label: 'Heart Rate',   unit: 'bpm',  stroke: '#d9293d', domain: [30, 150],  warnLow: 50,  warnHigh: 100  },
+  { key: 'temperature',  label: 'Temperature',  unit: '°C',   stroke: '#b87800', domain: [33, 42],   warnLow: 35,  warnHigh: 38.5 },
+  { key: 'systolic_bp',  label: 'Systolic BP',  unit: 'mmHg', stroke: '#7c3aed', domain: [60, 200],  warnLow: 90,  warnHigh: 140  },
+  { key: 'diastolic_bp', label: 'Diastolic BP', unit: 'mmHg', stroke: '#a78bfa', domain: [40, 130],  warnLow: 60,  warnHigh: 90   },
 ];
 
 function toChartData(vitals: VitalsRow[]) {
   return [...vitals].reverse().map((v) => ({
-    heart_rate:  v.heart_rate  != null ? Math.round(v.heart_rate  * 10) / 10 : null,
-    spo2:        v.spo2        != null ? Math.round(v.spo2        * 10) / 10 : null,
-    temperature: v.temperature != null ? Math.round(v.temperature * 10) / 10 : null,
+    heart_rate:   v.heart_rate   != null ? Math.round(v.heart_rate   * 10) / 10 : null,
+    temperature:  v.temperature  != null ? Math.round(v.temperature  * 10) / 10 : null,
+    systolic_bp:  v.systolic_bp  != null ? Math.round(v.systolic_bp)            : null,
+    diastolic_bp: v.diastolic_bp != null ? Math.round(v.diastolic_bp)           : null,
     time: new Date(v.recorded_at).toLocaleTimeString([], {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     }),
@@ -43,7 +45,7 @@ export default function VitalsChart({ vitals }: { vitals: VitalsRow[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {CHARTS.map((cfg) => {
         const latest    = data[data.length - 1]?.[cfg.key];
         const isWarning = latest != null && (

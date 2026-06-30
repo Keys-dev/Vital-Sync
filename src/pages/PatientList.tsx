@@ -60,7 +60,7 @@ function PatientFormModal({
 
   const submit = async () => {
     if (!form.full_name.trim()) { setError('Full name is required'); return; }
-    if (!form.date_of_birth)    { setError('Date of birth is required'); return; }
+    if (mode === 'add' && !form.date_of_birth) { setError('Date of birth is required'); return; }
     if (!form.diagnosis.trim()) { setError('Diagnosis is required'); return; }
     setLoading(true); setError('');
     try {
@@ -98,8 +98,14 @@ function PatientFormModal({
 
           {/* DOB + Gender */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Date of Birth" required>
-              <input type="date" value={form.date_of_birth} onChange={(e) => set('date_of_birth', e.target.value)} className={inputCls} />
+            <Field label="Date of Birth" required={mode === 'add'}>
+              {mode === 'add' ? (
+                <input type="date" value={form.date_of_birth} onChange={(e) => set('date_of_birth', e.target.value)} className={inputCls} />
+              ) : (
+                <div className={`${inputCls} bg-bg-elevated text-text-muted cursor-not-allowed flex items-center`}>
+                  <span className="text-xs text-text-muted">Cannot be changed after admission</span>
+                </div>
+              )}
             </Field>
             <Field label="Gender">
               <select value={form.gender} onChange={(e) => set('gender', e.target.value as PatientGender)} className={inputCls}>
@@ -458,6 +464,7 @@ export default function PatientList() {
     diagnosis:         p.diagnosis,
     bed_number:        p.bedNumber === '—' ? '' : p.bedNumber,
     emergency_contact: p.emergencyContact === 'None' ? '' : p.emergencyContact,
+    // date_of_birth intentionally omitted — DOB cannot be changed after admission
   });
 
   // ── Handlers ────────────────────────────────────────────────────────────────

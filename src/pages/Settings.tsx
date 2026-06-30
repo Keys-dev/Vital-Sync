@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useState } from 'react';
-import { User, Wifi, Bell, Thermometer, RefreshCw, Shield, Save, ChevronRight } from 'lucide-react';
+import { Wifi, WifiOff, Bell, Thermometer, RefreshCw, Shield, Save, ChevronRight, Pencil, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
+import { useProfile } from '@/hooks/useProfile';
+import { useDevices } from '@/hooks/useDevices';
 import AlertTestPanel from '@/components/AlertTestPanel';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -13,11 +15,9 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
         checked ? 'bg-accent-cyan' : 'bg-bg-elevated border border-border'
       }`}
     >
-      <span
-        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
-          checked ? 'translate-x-5' : 'translate-x-0.5'
-        }`}
-      />
+      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
+        checked ? 'translate-x-5' : 'translate-x-0.5'
+      }`} />
     </div>
   );
 }
@@ -50,11 +50,101 @@ function Row({ label, description, children }: {
   );
 }
 
+// ── Edit Profile Modal ────────────────────────────────────────────────────────
+
+function EditProfileModal({ current, onClose, onSave }: {
+  current: { name: string; email: string };
+  onClose: () => void;
+  onSave:  (data: { full_name: string; email: string }) => Promise<void>;
+}) {
+  const [name,    setName]    = useState(current.name);
+  const [email,   setEmail]   = useState(current.email);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+  const [done,    setDone]    = useState(false);
+
+  const submit = async () => {
+    if (!name.trim()) { setError('Name is required'); return; }
+    if (!email.trim()) { setError('Email is required'); return; }
+    setLoading(true); setError('');
+    try {
+      await onSave({ full_name: name, email });
+      setDone(true);
+      setTimeout(onClose, 800);
+    } catch (e) {
+      setError((e as Error).message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-bg-surface border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-semibold text-text-primary text-sm">Edit Profile</h3>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary"><X size={16} /></button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] font-mono text-text-muted uppercase tracking-wide block mb-1">Full Name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-bg-base border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-cyan"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-mono text-text-muted uppercase tracking-wide block mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-bg-base border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-cyan"
+            />
+            {email !== current.email && (
+              <p className="text-[10px] text-text-muted mt-1">A confirmation link will be sent to your new email.</p>
+            )}
+          </div>
+
+          {error && <p className="text-xs text-status-critical">{error}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-border text-xs font-mono text-text-muted hover:text-text-primary">
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={loading || done}
+              className="flex-1 py-2 rounded-xl bg-accent-cyan/10 border border-accent-cyan/30 text-xs font-mono text-accent-cyan hover:bg-accent-cyan/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              {loading && <Loader2 size={11} className="animate-spin" />}
+              {done    && <CheckCircle2 size={11} />}
+              {!loading && !done && <Pencil size={11} />}
+              {loading ? 'Saving…' : done ? 'Saved!' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function Settings() {
   const { settings, displayProfile, updateSetting } = useSettings();
+  const { updateProfile } = useProfile();
+  const { devices } = useDevices();
   const { signOut } = useAuthContext();
   const navigate = useNavigate();
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved]           = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+
+  // Device connection status — any device online counts as connected
+  const onlineDevices  = devices.filter((d) => d.status === 'online');
+  const isConnected    = onlineDevices.length > 0;
+  const offlineDevices = devices.filter((d) => d.status === 'offline');
 
   const handleSave = () => {
     setSaved(true);
@@ -74,45 +164,28 @@ export default function Settings() {
             <h2 className="font-display font-700 text-base text-text-primary truncate">
               {displayProfile.name}
             </h2>
-            <p className="text-xs text-text-muted font-mono capitalize">
-              {displayProfile.role}
-            </p>
-            <p className="text-xs text-text-muted font-mono truncate">
-              {displayProfile.email}
-            </p>
+            <p className="text-xs text-text-muted font-mono capitalize">{displayProfile.role}</p>
+            <p className="text-xs text-text-muted font-mono truncate">{displayProfile.email}</p>
           </div>
-          <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-border rounded-lg text-xs font-mono text-text-muted hover:text-text-primary transition-colors flex-shrink-0">
-            <User size={13} />
-            Edit Profile
+          <button
+            onClick={() => setShowEditProfile(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-border rounded-lg text-xs font-mono text-text-muted hover:text-text-primary transition-colors flex-shrink-0"
+          >
+            <Pencil size={12} /> Edit Profile
           </button>
         </div>
       </div>
 
       {/* ── Alert & Notifications ─────────────────────────────────────────── */}
       <Section title="Alert & Notifications" icon={Bell}>
-        <Row
-          label="Alerts Enabled"
-          description="Master switch — turn all patient alerts on or off"
-        >
-          <Toggle
-            checked={settings.alertsEnabled}
-            onChange={(v) => updateSetting('alertsEnabled', v)}
-          />
+        <Row label="Alerts Enabled" description="Master switch — turn all patient alerts on or off">
+          <Toggle checked={settings.alertsEnabled} onChange={(v) => updateSetting('alertsEnabled', v)} />
         </Row>
-        <Row
-          label="Alert Sound"
-          description="Play audio on critical alerts"
-        >
-          <Toggle
-            checked={settings.alertSound && settings.alertsEnabled}
-            onChange={(v) => updateSetting('alertSound', v)}
-          />
+        <Row label="Alert Sound" description="Play audio on critical alerts">
+          <Toggle checked={settings.alertSound && settings.alertsEnabled} onChange={(v) => updateSetting('alertSound', v)} />
         </Row>
         <Row label="Auto Refresh" description="Automatically refresh vitals data">
-          <Toggle
-            checked={settings.autoRefresh}
-            onChange={(v) => updateSetting('autoRefresh', v)}
-          />
+          <Toggle checked={settings.autoRefresh} onChange={(v) => updateSetting('autoRefresh', v)} />
         </Row>
         <Row label="Refresh Interval" description="How often to poll new data">
           <select
@@ -120,9 +193,7 @@ export default function Settings() {
             onChange={(e) => updateSetting('refreshInterval', Number(e.target.value))}
             className="bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-xs font-mono text-text-primary outline-none"
           >
-            {[3, 5, 10, 15, 30].map((s) => (
-              <option key={s} value={s}>{s}s</option>
-            ))}
+            {[3, 5, 10, 15, 30].map((s) => <option key={s} value={s}>{s}s</option>)}
           </select>
         </Row>
       </Section>
@@ -136,9 +207,7 @@ export default function Settings() {
                 key={u}
                 onClick={() => updateSetting('temperatureUnit', u)}
                 className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
-                  settings.temperatureUnit === u
-                    ? 'bg-accent-cyan/20 text-accent-cyan'
-                    : 'text-text-muted'
+                  settings.temperatureUnit === u ? 'bg-accent-cyan/20 text-accent-cyan' : 'text-text-muted'
                 }`}
               >
                 °{u}
@@ -149,13 +218,33 @@ export default function Settings() {
       </Section>
 
       {/* ── IoT Connectivity ──────────────────────────────────────────────── */}
-      <Section title="IoT Connectivity" icon={Wifi}>
-        <Row label="Connection Status" description="Current MQTT broker connection">
-          <div className="flex items-center gap-2 text-xs font-mono text-status-stable">
-            <span className="w-2 h-2 rounded-full bg-status-stable vital-pulse" />
-            Connected (simulation)
-          </div>
+      <Section title="IoT Connectivity" icon={isConnected ? Wifi : WifiOff}>
+        <Row label="Connection Status" description="Live device connection from Supabase">
+          {isConnected ? (
+            <div className="flex items-center gap-2 text-xs font-mono text-status-stable">
+              <span className="w-2 h-2 rounded-full bg-status-stable vital-pulse" />
+              {onlineDevices.length} device{onlineDevices.length !== 1 ? 's' : ''} online
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs font-mono text-status-inactive">
+              <span className="w-2 h-2 rounded-full bg-status-inactive" />
+              No devices online
+            </div>
+          )}
         </Row>
+        {offlineDevices.length > 0 && (
+          <Row label="Offline Devices" description="Devices that have stopped sending data">
+            <div className="flex items-center gap-2 text-xs font-mono text-status-critical">
+              <WifiOff size={11} />
+              {offlineDevices.length} offline
+            </div>
+          </Row>
+        )}
+        {devices.length === 0 && (
+          <Row label="No devices registered" description="Go to the Devices page to register your IoT hardware">
+            <span className="text-xs font-mono text-text-muted">—</span>
+          </Row>
+        )}
       </Section>
 
       {/* ── System ────────────────────────────────────────────────────────── */}
@@ -164,10 +253,7 @@ export default function Settings() {
           <span className="text-xs font-mono text-text-muted">v1.0.0</span>
         </Row>
         <Row label="Data Source" description="Current data pipeline">
-          <span className="text-xs font-mono text-text-muted">MQTT + ThingSpeak</span>
-        </Row>
-        <Row label="Sensors" description="Configured IoT sensor types">
-          <span className="text-xs font-mono text-text-muted">MAX30102 · LM35 · BMP280</span>
+          <span className="text-xs font-mono text-text-muted">Supabase Realtime</span>
         </Row>
         <div
           className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-bg-elevated/50 transition-colors"
@@ -208,6 +294,15 @@ export default function Settings() {
           {saved ? 'Saved ✓' : 'Save Settings'}
         </button>
       </div>
+
+      {/* Edit profile modal */}
+      {showEditProfile && (
+        <EditProfileModal
+          current={{ name: displayProfile.name, email: displayProfile.email }}
+          onClose={() => setShowEditProfile(false)}
+          onSave={updateProfile}
+        />
+      )}
     </div>
   );
 }

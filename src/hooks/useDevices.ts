@@ -29,19 +29,22 @@ export function useDevices() {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    fetch();
+  // useEffect in useDevices.ts
 
-    // Realtime — new device auto-registers or status changes
-    const channel = supabase
-      .channel('devices-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'devices' }, () => {
-        fetch(); // re-fetch on any change (insert/update)
-      })
-      .subscribe();
+useEffect(() => {
+  fetch();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [fetch]);
+  // Unique name prevents StrictMode's double-mount from hitting
+  // an already-subscribed channel with the same name.
+  const channel = supabase
+    .channel(`devices-changes-${Date.now()}`)   // ← only change
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'devices' }, () => {
+      fetch();
+    })
+    .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
+}, [fetch]);
 
   const assignDevice = useCallback(async (deviceId: string, patientId: string | null) => {
     const { error: err } = await supabase

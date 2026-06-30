@@ -17,14 +17,15 @@ export interface DBPatient {
 }
 
 export interface VitalsRow {
-  id:          string;
-  patient_id:  string;
-  heart_rate:  number | null;
-  spo2:        number | null;
-  temperature: number | null;
-  latitude:    number | null;
-  longitude:   number | null;
-  recorded_at: string;
+  id:           string;
+  patient_id:   string;
+  heart_rate:   number | null;
+  temperature:  number | null;
+  systolic_bp:  number | null;
+  diastolic_bp: number | null;
+  latitude:     number | null;
+  longitude:    number | null;
+  recorded_at:  string;
 }
 
 export interface AccessRequest {

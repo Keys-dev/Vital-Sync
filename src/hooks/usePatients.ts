@@ -22,7 +22,6 @@ export function usePatients() {
     if (v) {
       if (
         (v.heart_rate  != null && (v.heart_rate  > 100 || v.heart_rate  < 50)) ||
-        (v.spo2        != null &&  v.spo2        < 94)                          ||
         (v.temperature != null && (v.temperature > 38.5 || v.temperature < 35))
       ) {
         status = 'critical';
@@ -50,7 +49,6 @@ export function usePatients() {
       emergencyContact: p.emergency_contact || 'None',
       vitals: {
         heartRate:   v?.heart_rate  ?? 0,
-        spo2:        v?.spo2        ?? 0,
         temperature: v?.temperature ?? 0,
         systolicBP:  120,
         diastolicBP: 80,

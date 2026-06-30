@@ -1,6 +1,7 @@
 import VitalsChart         from './VitalsChart';
 import LiveMap             from './LiveMap';
 import { usePatientVitals } from '@/hooks/usePatientVital';
+import { useProfile } from '@/hooks/useProfile';
 import { Activity, AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -17,17 +18,30 @@ const STATUS_META = {
   closed:     { cls: 'bg-border/50 border-border text-text-muted',                           label: 'Disconnected' },
 };
 
+function formatLastReading(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  return {
+    date: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+  };
+}
+
 export default function PatientVitalsView({
   patientId, patientName, onBack, backLabel = '← Back',
 }: Props) {
   const { vitals, latest, loading, error, status } = usePatientVitals(patientId);
+  const { profile } = useProfile();
   const meta = STATUS_META[status];
+
+  // Doctor name comes from the logged-in profile
+  const doctorName = profile?.full_name ?? null;
 
   const hasAlerts = latest != null && (
     (latest.heart_rate  != null && (latest.heart_rate  > 100 || latest.heart_rate  < 50)) ||
-    (latest.spo2        != null &&  latest.spo2        < 94)                               ||
     (latest.temperature != null && (latest.temperature > 38.5 || latest.temperature < 35))
   );
+
+  const lastReading = latest ? formatLastReading(latest.recorded_at) : null;
 
   return (
     <div className="space-y-6">
@@ -36,8 +50,7 @@ export default function PatientVitalsView({
         <div>
           {onBack && (
             <button onClick={onBack}
-              className="text-xs font-mono text-text-muted hover:text-text-secondary
-                transition-colors mb-2 block">
+              className="text-xs font-mono text-text-muted hover:text-text-secondary transition-colors mb-2 block">
               {backLabel}
             </button>
           )}
@@ -77,11 +90,12 @@ export default function PatientVitalsView({
       {!loading && !error && (
         <>
           {/* Summary strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
               { label: 'Heart Rate',   val: latest?.heart_rate,  unit: 'bpm', warn: (v: number) => v > 100 || v < 50, color: 'text-status-critical' },
-              { label: 'SpO₂',        val: latest?.spo2,         unit: '%',   warn: (v: number) => v < 94,             color: 'text-accent-cyan'     },
               { label: 'Temperature', val: latest?.temperature,  unit: '°C',  warn: (v: number) => v > 38.5 || v < 35, color: 'text-status-warning'  },
+              { label: 'Systolic BP', val: latest?.systolic_bp,  unit: 'mmHg', warn: (v: number) => v > 140 || v < 90, color: 'text-purple-400'      },
+              { label: 'Diastolic BP',val: latest?.diastolic_bp, unit: 'mmHg', warn: (v: number) => v > 90  || v < 60, color: 'text-purple-400'      },
             ].map(({ label, val, unit, warn, color }) => {
               const isWarn = val != null && warn(val);
               return (
@@ -99,17 +113,22 @@ export default function PatientVitalsView({
               );
             })}
 
+            {/* Last reading — full date + time */}
             <div className="bg-bg-surface border border-border rounded-xl p-3">
               <p className="text-[10px] font-mono font-semibold text-text-muted uppercase tracking-widest">Last Reading</p>
-              <p className="font-display text-base font-700 text-text-primary mt-0.5">
-                {latest
-                  ? new Date(latest.recorded_at).toLocaleTimeString([], {
-                      hour: '2-digit', minute: '2-digit', second: '2-digit',
-                    })
-                  : '—'}
-              </p>
+              {lastReading ? (
+                <>
+                  <p className="font-display text-sm font-700 text-text-primary mt-0.5">{lastReading.time}</p>
+                  <p className="text-[10px] font-mono text-text-muted">{lastReading.date}</p>
+                </>
+              ) : (
+                <p className="font-display text-xl font-700 text-text-primary mt-0.5">—</p>
+              )}
             </div>
+          </div>
 
+          {/* Total readings + doctor */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="bg-bg-surface border border-border rounded-xl p-3">
               <p className="text-[10px] font-mono font-semibold text-text-muted uppercase tracking-widest">Total Readings</p>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -117,6 +136,12 @@ export default function PatientVitalsView({
                 <p className="font-display text-xl font-700 text-text-primary">{vitals.length}</p>
               </div>
             </div>
+            {doctorName && (
+              <div className="bg-bg-surface border border-border rounded-xl p-3">
+                <p className="text-[10px] font-mono font-semibold text-text-muted uppercase tracking-widest">Attending Doctor</p>
+                <p className="font-display text-sm font-700 text-text-primary mt-0.5 truncate">{doctorName}</p>
+              </div>
+            )}
           </div>
 
           {/* Charts */}
@@ -132,6 +157,9 @@ export default function PatientVitalsView({
               latitude={latest?.latitude ?? null}
               longitude={latest?.longitude ?? null}
               patientName={patientName}
+              history={vitals
+                .filter((v) => v.latitude != null && v.longitude != null)
+                .map((v) => ({ lat: v.latitude!, lng: v.longitude!, timestamp: v.recorded_at }))}
             />
           </div>
         </>

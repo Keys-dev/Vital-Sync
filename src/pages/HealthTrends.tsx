@@ -7,18 +7,20 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { usePatients } from '@/hooks/usePatients';
 import { DEFAULT_THRESHOLDS } from '@/services/vitals';
 
-type Metric = 'heartRate' | 'temperature' | 'systolicBP';
+type Metric = 'heartRate' | 'temperature' | 'systolicBP' | 'diastolicBP';
 
 const METRICS: { key: Metric; label: string; unit: string; color: string; domain: [number, number] }[] = [
-  { key: 'heartRate', label: 'Heart Rate', unit: 'bpm', color: '#ef4444', domain: [40, 160] },
-  { key: 'temperature', label: 'Temperature', unit: '°C', color: '#f97316', domain: [35, 41] },
-  { key: 'systolicBP', label: 'Systolic BP', unit: 'mmHg', color: '#a855f7', domain: [70, 200] },
+  { key: 'heartRate',   label: 'Heart Rate',   unit: 'bpm',  color: '#ef4444', domain: [40, 160]  },
+  { key: 'temperature', label: 'Temperature',  unit: '°C',   color: '#f97316', domain: [35, 41]   },
+  { key: 'systolicBP',  label: 'Systolic BP',  unit: 'mmHg', color: '#a855f7', domain: [70, 200]  },
+  { key: 'diastolicBP', label: 'Diastolic BP', unit: 'mmHg', color: '#3b82f6', domain: [40, 130]  },
 ];
 
 const THRESHOLDS: Record<Metric, { min?: number; max?: number }> = {
   heartRate: DEFAULT_THRESHOLDS.heartRate,
   temperature: DEFAULT_THRESHOLDS.temperature,
   systolicBP: DEFAULT_THRESHOLDS.systolicBP,
+  diastolicBP: DEFAULT_THRESHOLDS.diastolicBP,
 };
 
 const COLORS = ['#00c8f0', '#ef4444', '#f97316', '#a855f7', '#3b82f6', '#00e5a0', '#ffb800', '#ec4899'];
