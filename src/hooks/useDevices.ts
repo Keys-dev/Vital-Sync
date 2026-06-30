@@ -29,22 +29,21 @@ export function useDevices() {
     setLoading(false);
   }, []);
 
-  // useEffect in useDevices.ts
+  useEffect(() => {
+    fetch();
 
-useEffect(() => {
-  fetch();
+    // Unique channel name (UUID, not Date.now()) — avoids same-millisecond
+    // collisions when React 18 Strict Mode double-invokes this effect.
+    const channelName = `devices-changes-${crypto.randomUUID()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'devices' }, () => {
+        fetch();
+      })
+      .subscribe();
 
-  // Unique name prevents StrictMode's double-mount from hitting
-  // an already-subscribed channel with the same name.
-  const channel = supabase
-    .channel(`devices-changes-${Date.now()}`)   // ← only change
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'devices' }, () => {
-      fetch();
-    })
-    .subscribe();
-
-  return () => { supabase.removeChannel(channel); };
-}, [fetch]);
+    return () => { supabase.removeChannel(channel); };
+  }, [fetch]);
 
   const assignDevice = useCallback(async (deviceId: string, patientId: string | null) => {
     const { error: err } = await supabase
